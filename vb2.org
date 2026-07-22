@@ -392,3 +392,57 @@ pnpm exec vue-tsc --noEmit
 reportUntypedFunctionDecorator = false
 reportUnknownMemberType = false
 #+end_src
+
+- context 7/22
+#+begin_src 
+VB2 SESSION CONTEXT (continuation — frontend)
+
+BACKEND STATUS (done)
+- Flask + flask-openapi3 (migrated from flask_pydantic; @validate() removed)
+- OpenAPI spec served at /openapi/openapi.json (not /openapi.json)
+- Path params: separate Pydantic model (e.g. BookPath with `id: int`),
+  function param named `path: BookPath` — NOT plain `id: int` in signature
+- SQLAlchemy: custom Base(MappedAsDataclass, DeclarativeBase); db =
+  SQLAlchemy(model_class=Base, session_options={"expire_on_commit": False})
+- Practice model: last_edited required (no default, client supplies via
+  sync); last_practiced/status/due_dates/due_counter all optional with
+  defaults (None/NEW/None/None) — None is valid pre-graduation state, not
+  "unset"
+- Endpoints implemented: GET /books, POST /books/{id} (sync_book) —
+  single endpoint handles both "fetch only" (empty practices) and
+  "sync local changes" (populated practices) cases
+- SyncBookReq: {practices: list[PracticeSchema]}
+- SyncBookResp: {book: BookSchema, words: list[WordSchema],
+  practices: list[PracticeSchema]}
+- sync_book reconciliation: last-write-wins per practice via last_edited
+  timestamp comparison; new practices (no id) get inserted; existing
+  practices only updated if cp.last_edited > sp.last_edited; book's
+  wd_last_practiced/dw_last_practiced updated from max(cp.last_practiced)
+  per direction
+
+FRONTEND STATUS (starting now)
+- Vue 3 + TypeScript + Pinia + DaisyUI, scaffolded, pnpm
+- Tailwind v4 + @tailwindcss/vite installed
+- src/types/api.ts generated via:
+  pnpm exec openapi-typescript http://localhost:8000/openapi/openapi.json -o src/types/api.ts
+- Vitest/E2E testing deliberately deferred until main flow is working
+  end-to-end
+
+STILL OPEN
+- All frontend work: API client setup, stores, views, sync-call
+  integration, offline local-changes collection
+- JWT + Google OAuth (Authlib + flask-jwt-extended chosen, not implemented)
+- Auth currently hardcoded user_id=1 server-side
+
+WORKING STYLE (important)
+Socratic, one problem at a time, concise replies. Kyosuke writes all code
+himself — do not provide code unless explicitly requested.
+#+end_src
+
+- src/vite-env.d.ts
+#+begin_src js
+/// <reference types="vite/client" />
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+#+end_src
