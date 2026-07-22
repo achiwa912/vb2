@@ -1,0 +1,394 @@
+#+TITLE: vb2 - vocaBull 2
+
+* Brainstorming with Claude
+#+begin_src 
+I'd like to start a new project with SQLALchemy+Pydantic+Flask+TS+Vue+Tailwind+DaisyUI.  It's a facelift/remake of my old project vbs which is a flashcard web app with Flask+Jinja2+Bootstrap.  It's hosted on pythonanywhere but it has gotten slow possibly because of throttling for the free tier.  I want to move most flashcard logic to frontend with vb2.
+
+I'd like to auth with gmail.
+
+I'd add tests for vb2.
+#+end_src
+
+*** Auth flow
+1. Frontend uses Google's Identity Services JS library (the "Sign in with Google" button) to get the user to authenticate directly with Google in the browser.
+2. Google hands the frontend a signed ID token (a JWT from Google, containing email, name, etc.) — no redirect back-and-forth through your Flask server needed.
+3. Frontend POSTs that ID token to your Flask backend (e.g. /auth/google).
+4. Backend verifies the token's signature against Google's public keys (via the google-auth Python library's id_token.verify_oauth2_token), extracts the email, looks up or creates a User row.
+5. Backend issues its own JWT (via flask-jwt-extended or manually with pyjwt) for subsequent API calls — this is the token your Vue app stores and sends as Authorization: Bearer ... on every request after that.
+
+*** Skeleton
+#+begin_src 
+vb2/
+├── backend/
+│   ├── app/
+│   │   ├── models/
+│   │   │   ├── user.py
+│   │   │   ├── word.py
+│   │   │   └── ...
+│   │   ├── schemas/
+│   │   │   ├── user.py
+│   │   │   ├── word.py
+│   │   │   └── ...
+│   │   ├── routes/
+│   │   │   ├── auth.py       # /auth/google
+│   │   │   ├── sync.py       # sync endpoint(s)
+│   │   │   └── ...
+│   │   ├── auth/
+│   │   │   ├── google.py     # verify Google ID token
+│   │   │   └── jwt.py        # issue/verify your own JWT
+│   │   ├── db.py
+│   │   ├── config.py         # dev/test/prod configs
+│   │   └── __init__.py       # create_app()
+│   ├── tests/
+│   │   ├── conftest.py       # app + db fixtures
+│   │   ├── test_auth.py
+│   │   ├── test_sync.py
+│   │   └── ...
+│   ├── migrations/           # Alembic
+│   └── run.py
+├── frontend/
+│   └── ...
+├── Caddyfile
+└── docker-compose.yml
+#+end_src
+
+*** endpoints
+- POST /auth/google — exchange Google ID token for JWT
+- GET /books — list user's books
+- POST /books — create book
+- GET /books/{id} — full load (words + content + practice-state)
+- DELETE /books/{id} — delete book
+- POST /books/{id}/words — add word
+- DELETE /books/{id}/words/{word_id} — remove word
+- POST /books/{id}/sync — reconcile full book (content + practice-state, per-word timestamps)
+
+- context (7/19)
+#+begin_src 
+VB2 PROJECT CONTEXT
+
+Remake of vocaBull (vbs): flashcard web app, Flask+Jinja2+Bootstrap on
+PythonAnywhere free tier, currently slow. vb2 moves most flashcard logic
+to frontend.
+
+STACK
+- Backend: Flask (app factory pattern) + SQLAlchemy + Pydantic + flask-pydantic
+- Frontend: Vue 3 + TypeScript + Pinia + DaisyUI
+- Auth: Google Sign-In (Identity Services JS) -> ID token -> backend verifies
+  via google-auth library -> backend issues own JWT (flask-jwt-extended or
+  pyjwt) for API calls. Multi-user.
+- DB: SQLite initially, deployed on PythonAnywhere free tier (works fine:
+  SQLite is local, Google OAuth verification works since googleapis.com is
+  whitelisted, static Vue build served via PythonAnywhere static file mapping).
+  Future: may migrate to Postgres, likely self-hosted on homelab (N150
+  Ubuntu/Proxmox, used today only as git origin/rsync target) once needed,
+  since Postgres wire protocol is blocked on PythonAnywhere free tier.
+  Homelab already runs Caddy (reverse proxy/TLS) for existing blog site.
+- Tests: pytest, in-memory/throwaway SQLite for test config, mock Google
+  token verification in tests.
+
+SKELETON (backend)
+backend/app/{models,schemas,routes,auth}/, db.py, config.py, __init__.py
+(create_app factory), tests/, migrations/ (Alembic)
+
+DOMAIN CONCEPT (from vbs, being redesigned)
+- Multiple books per user (library/borrow-book feature deferred, not in v1)
+- Each book: words with content (word/definition/example) + practice-state
+  (which "bucket": learning window / waiting window / memorized-book, plus
+  SRS-style due counter)
+- vb1's Shifting Learning Window (SLW) method being hybridized with SRS:
+  frequency-based learning/waiting windows for actively-studied words,
+  time-based spaced repetition once "memorized" -- using DUE COUNTERS
+  (incremented only on session days) rather than absolute due dates, to
+  avoid due-pileup after skipping days/weeks.
+
+ENDPOINTS DECIDED SO FAR
+- POST /auth/google              - exchange Google ID token for JWT
+- GET  /books                    - list user's books
+- POST /books                    - create book
+- GET  /books/{id}               - full load (words + content + practice-state)
+- DELETE /books/{id}             - delete book
+- POST /books/{id}/words         - add word
+- DELETE /books/{id}/words/{id}  - remove word
+- POST /books/{id}/sync          - reconcile full book (see below)
+
+SYNC DESIGN (decided)
+- Client sends/receives ENTIRE book both on load and on sync (not deltas) --
+  acceptable since book size is small (tens-hundreds of words) and N150/
+  PythonAnywhere can handle full-book JSON easily.
+- Reconciliation is per-word, last-write-wins by timestamp, with THREE
+  independent timestamp levels (not one per word):
+  1. book-level metadata (name, language, etc.) -- own last_updated
+  2. word content (word/definition/example) -- own last_updated
+  3. word practice-state (bucket, due counter, etc.) -- own last_updated
+  This is needed because multi-device use (phone + laptop) means both could
+  change different things between syncs; whole-record overwrite would lose
+  work. Content edits are rare but still must not be clobbered.
+
+NEXT STEP (in progress when this context was cut)
+Designing models.py -- starting with User model fields (beyond Google's
+email/name).
+
+WORKING STYLE (important)
+Socratic, one problem at a time, concise replies. Kyosuke writes all code
+himself -- do not provide code unless explicitly requested. Don't pile on
+multiple follow-up questions or extra info beyond what was asked.
+#+end_src
+
+*** Scaffolding
+#+begin_src 
+cd ~/py/vb2
+uv venv
+uv init
+uv add sqlalchemy pydantic
+uv add flask flask-sqlalchemy authlib flask-jwt-extended
+uv add flask-openapi3 flask-openapi3-swagger
+uv pip list
+#+end_src
+
+*** How to calculate time lapse
+- due_dates - the dates for the word to become due.  1 \to 2 \to 4 \to 8 ..
+- due_counter - initial value = due_dates.  decrements every day.  0 = due.
+- When starting to practice a book, for every word in the book:
+  - if it's the next or later day, decrement due_counter by 1
+    - Note: it's not >= 24 hours.  I want to know if it's the next day (or later)
+
+- context 7/20
+#+begin_src 
+VB2 SESSION CONTEXT (continuation)
+
+MODELS.PY - DECIDED (models.py itself already drafted by Kyosuke)
+- User: id, sub (Google sub, unique), email (unique), name, created_at (tz-aware)
+- Book: id, last_edited (tz-aware, book metadata timestamp), wd_last_practiced,
+  dw_last_practiced (date used to trigger due_counter decrement per direction),
+  user_id FK
+- Word: id, word, definition, sample, last_edited (tz-aware, content-only
+  timestamp), book_id FK
+- Practice (separate table, NOT columns on Word): id, direction ("wd"/"dw"),
+  status (Pracstat: new/learning/waiting/review), due_dates, due_counter,
+  last_edited (tz-aware -- updated both by actual practice events AND by
+  day-lapse due_counter decrements; serves as sync LWW timestamp), user_id FK,
+  word_id FK, UniqueConstraint(direction, user_id, word_id)
+  Rationale for separate table: prepares for future library/borrow-book
+  feature where multiple users share a book's Word content but need
+  independent practice progress. word/definition -> two directions (wd, dw)
+  tracked as fully independent progress (separate status/due_dates/
+  due_counter/last_edited each), not shared or blended.
+
+DUE-COUNTER / TIME-LAPSE MECHANIC - DECIDED
+- due_dates: target interval value (grows 1 -> 2 -> 4 -> 8...) set when word
+  status changes/graduates
+- due_counter: starts at due_dates, decrements toward 0; 0 = due
+- Decrement trigger: compare TODAY's calendar date vs book's
+  wd_last_practiced/dw_last_practiced (per direction). If today is later
+  (not >=24hrs -- literal calendar-day-later), decrement ALL words'
+  due_counter for that direction by 1 (floor 0), in one pass at session
+  start (instantaneous, few hundred rows). This is the whole point of using
+  a counter instead of absolute due-dates: skipping a week only costs -1,
+  not -7, avoiding due-pileup.
+- Book-level last_practiced (per direction) drives this, NOT per-word --
+  deliberately chosen over per-word so untouched words still decay properly
+  even if not touched every session.
+
+SYNC / RECONCILIATION ARCHITECTURE - DECIDED
+- Reconciliation happens at TWO points, both real:
+  1. CLIENT-SIDE: on every load (GET /books/{id}), client compares its
+     localStorage copy against server response per field-group timestamp
+     (book metadata / word content / word practice-state), keeps newer,
+     produces merged local state.
+  2. SERVER-SIDE: on /sync (POST), server does lightweight per-field-group
+     LWW check against its own stored timestamps before overwriting (NOT
+     full reconciliation of two other copies -- just guards against two
+     near-simultaneous device syncs clobbering each other). Server returns
+     the reconciled result.
+  3. Client then reconciles its local copy again against that /sync
+     response (closes the loop, symmetric with GET flow).
+- Rationale: client-only reconciliation was insufficient because two
+  devices syncing near-simultaneously could have one's reconciled write
+  clobber the other's, since by definition each device only reconciles
+  against what it personally fetched.
+
+LOCAL STORAGE STRATEGY - DECIDED
+- Path 1 chosen explicitly: NOT building offline-mode. Server round-trip
+  still happens on every "list books" / "load book" action.
+- localStorage holds ONE book at a time (words + practice-state, both
+  directions) -- NOT the book list (book list always fetched fresh from
+  server, cheap/rarely changes).
+- Local (Pinia, backed by localStorage) is authoritative only WITHIN a
+  session, between load points -- exists specifically to survive page
+  reload without losing in-progress practice progress (Pinia state alone
+  is memory-only, wiped on reload).
+- Written to localStorage after every card-answer event (cheap/instant,
+  full-book JSON, no granular per-word writes -- consistent with
+  whole-book-not-deltas design already used for server sync).
+- Switching to a different book or direction session: sync current book to
+  server FIRST (blocking), only then clear localStorage and load the new
+  book. If sync fails, block the switch entirely -- switching requires
+  fetching the new book's data anyway, so this isn't an extra guard, it's
+  inherent to the flow.
+
+STILL OPEN / NEXT STEPS
+- schemas.py: not yet started. Need Pydantic schemas for BookOut (nested
+  words + practice-state, both directions) matching the whole-book
+  wire format. Was about to start when reconciliation-architecture
+  discussion (above) took over -- schemas should reflect the now-settled
+  sync design.
+- /sync endpoint request/response shape not yet formalized (know it needs
+  to accept client's reconciled book and return server's reconciled book,
+  per points above).
+- Alembic: explicitly deferred until first PythonAnywhere deploy; using
+  create_all() + delete/recreate DB during active model iteration.
+
+WORKING STYLE (unchanged)
+Socratic, one problem at a time, concise replies. Kyosuke writes all code
+himself -- do not provide code unless explicitly requested. Don't pile on
+multiple follow-up questions or extra info beyond what was asked.
+#+end_src
+
+*** pyright is soooooo annoying.  Which would you choose?
+- option 1 - verbose
+- option 2 - pyright complains books=books
+- option 3 - less, but still verbose.  why should I!?
+#+begin_src 
+@app.get("/books")
+def list_books():
+    books = db.session.execute(select(Book).where(Book.user_id == 1)).scalars().all()
+    book_schemas = [BookSchema.model_validate(b) for b in books]
+    return ListBooksResp(books=book_schemas).model_dump(mode="json")
+
+
+@app.get("/books2")
+def list_books2():
+    books = db.session.execute(select(Book).where(Book.user_id == 1)).scalars().all()
+    return ListBooksResp(books=books).model_dump(mode="json")
+
+
+@app.get("/books3")
+def list_books3():
+    books = db.session.execute(select(Book).where(Book.user_id == 1)).scalars().all()
+    return ListBooksResp.model_validate({"books": books}).model_dump(mode="json")
+#+end_src
+
+- context 7/21
+#+begin_src 
+VB2 SESSION CONTEXT (continuation)
+
+STACK: Flask + Flask-SQLAlchemy + SQLite, Pydantic schemas, JWT planned
+(not yet built). uv package manager.
+
+MODELS.PY - DECIDED
+- Base class: custom Base(MappedAsDataclass, DeclarativeBase), passed to
+  SQLAlchemy(model_class=Base) in database.py -- NOT db.Model directly.
+  Reason: MappedAsDataclass conflicts with db.Model's DefaultMeta
+  (metaclass conflict). This combo avoids it while keeping db.session,
+  db.init_app, config-driven engine setup.
+- Because of MappedAsDataclass: every Mapped[] field becomes a required
+  __init__ kwarg unless explicitly marked init=False (e.g. id primary key,
+  relationship fields). Field ordering also matters (non-default before
+  default), same as regular Python dataclasses.
+- Pracstat and Direction (str, Enum) now live in models.py (moved from
+  schemas.py to avoid duplication); schemas.py imports them from models.
+- relationship() cascade fix: "all, delete-orphan" (hyphen, not
+  underscore) -- typo caused ArgumentError earlier.
+- Tables: users, books, words, practices (practices seeded lazily during
+  actual learning sessions, NOT in seed.py).
+
+DATABASE.PY - DECIDED
+- Minimal: just `db = SQLAlchemy(model_class=Base)`. No app, no
+  create_all here -- both moved to api.py.
+
+API.PY - DECIDED
+- Owns `app = Flask(__name__)`, config, db.init_app(app), and
+  create_all() inside `if __name__ == "__main__":` guard.
+- DB path bug (fixed): don't use relative "sqlite:///db.db" -- Flask's
+  instance-folder resolution differs based on whether module is run as
+  __main__ vs imported (e.g. from seed.py), causing two separate db.db
+  files. Fixed via absolute path built from __file__:
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(basedir, 'db.db')}"
+- Auth: user_id hardcoded to 1 for now (real JWT auth deferred).
+- Typing: use plain `from sqlalchemy import select`, not `db.select()`
+  (better type inference from basepyright).
+- Pydantic/pyright friction pattern -- DECIDED APPROACH: when constructing
+  a *Resp schema from ORM objects (e.g. Sequence[Book] -> list[BookSchema]),
+  use `ListBooksResp.model_validate({"books": books}).model_dump(mode="json")`
+  rather than passing ORM objects directly to the strict __init__ (which
+  basepyright flags as type mismatch even though it works at runtime via
+  from_attributes=True). model_validate's param is typed Any, so no
+  suppression/ignore comments needed. This is the standard approach going
+  forward for all *Resp schema construction from ORM query results.
+- GET /books: implemented, using the model_validate pattern above.
+
+SEED.PY - DECIDED
+- Seeds User(id=1, sub="test", ...) and one Book with 10 Word rows.
+  Run manually with app_context via importing app from api.py. Practice
+  rows intentionally NOT seeded.
+
+SCHEMAS.PY - DECIDED
+- BookSchema needs model_config = ConfigDict(from_attributes=True) (and
+  same for WordSchema, PracticeSchema) to build from SQLAlchemy objects.
+- Single-book design (not list) for SyncBookReq/SyncBookResp -- corrected
+  from an earlier draft that mistakenly used list[BookSchema].
+
+STILL OPEN / NEXT STEPS
+- GET /books/{id}: whole-book payload (words + practice-state, both
+  directions) -- not yet implemented.
+- /sync endpoint (POST): request/response shape not yet formalized.
+- Apply the model_validate pattern to GET /books/{id} and /sync once
+  built.
+- JWT + Google OAuth (Authlib + flask-jwt-extended chosen,
+
+WORKING STYLE (important)
+Socratic, one problem at a time, concise replies. Kyosuke writes all code
+himself -- do not provide code unless explicitly requested. Don't pile on
+multiple follow-up questions or extra info beyond what was asked.
+#+end_src
+
+#+begin_src 
+uv run python -m be.api
+uv run python -m be.seed
+flask --app be.api:app run --port 8000 --debug
+#+end_src
+
+*** Frontend
+- Vue scaffolding
+#+begin_src bash
+pnpm create vue@latest fe
+# include TypeScript, Router, Pinia, Linter and Prettier
+cd fe
+pnpm install
+pnpm add -D daisyui@latest
+pnpm add -D @tailwindcss/vite tailwindcss
+# pnpm add -g @vue/language-server  # for Emacs
+# pnpm install -g typescript-language-server typescript  # for Emacs
+pnpm add -D openapi-typescript
+#+end_src
+- add to vite.config.js
+#+begin_src js
+import tailwindcss from '@tailwindcss/vite'  // <---
+
+export default defineConfig({
+  plugins: [
+      vue(),
+      tailwindcss(),  // <---
+      vueDevTools(),
+  ],
+#+end_src
+- create fe/src/style.css
+#+begin_src css
+@import "tailwindcss";
+@plugin "daisyui" {
+    themes: emerald, light, dark;
+}
+#+end_src
+
+#+begin_src 
+pnpm exec openapi-typescript http://localhost:8000/openapi/openapi.json -o src/types/api.ts
+pnpm exec vue-tsc --noEmit
+#+end_src
+
+- add to pyproject.toml to suppress warnings
+#+begin_src 
+[tool.pyright]
+reportUntypedFunctionDecorator = false
+reportUnknownMemberType = false
+#+end_src
