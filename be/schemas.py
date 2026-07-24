@@ -45,6 +45,10 @@ class BookPath(BaseModel):
     id: int
 
 
+class ListWordsResp(BaseModel):
+    words: list[WordSchema]
+
+
 class SyncBookReq(BaseModel):
     practices: list[PracticeSchema]
 

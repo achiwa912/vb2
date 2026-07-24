@@ -20,7 +20,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/books/{id}": {
+    "/books/{id}/words": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_book_words_books__int_id__words_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sync/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -29,7 +45,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["sync_book_books__int_id__post"];
+        post: operations["sync_book_sync__int_id__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -68,6 +84,11 @@ export interface components {
         ListBooksResp: {
             /** Books */
             books: components["schemas"]["BookSchema"][];
+        };
+        /** ListWordsResp */
+        ListWordsResp: {
+            /** Words */
+            words: components["schemas"]["WordSchema"][];
         };
         /**
          * PracDir
@@ -219,7 +240,38 @@ export interface operations {
             };
         };
     };
-    sync_book_books__int_id__post: {
+    list_book_words_books__int_id__words_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWordsResp"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorModel"][];
+                };
+            };
+        };
+    };
+    sync_book_sync__int_id__post: {
         parameters: {
             query?: never;
             header?: never;

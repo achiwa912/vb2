@@ -8,6 +8,7 @@ from .database import db
 from .models import User, Book, Word, Practice, PracDir
 from .schemas import (
     ListBooksResp,
+    ListWordsResp,
     BookPath,
     SyncBookReq,
     SyncBookResp,
@@ -36,7 +37,15 @@ def list_books() -> dict[str, ListBooksResp]:
     return ListBooksResp.model_validate({"books": books}).model_dump(mode="json")
 
 
-@app.post("/books/<int:id>", responses={200: SyncBookResp})
+@app.get("/books/<int:id>/words", responses={200: ListWordsResp})
+def list_book_words(path: BookPath) -> dict[str, ListWordsResp]:
+    words = (
+        db.session.execute(select(Word).where(Word.book_id == path.id)).scalars().all()
+    )
+    return ListWordsResp.model_validate({"words": words}).model_dump(mode="json")
+
+
+@app.post("/sync/<int:id>", responses={200: SyncBookResp})
 def sync_book(path: BookPath, body: SyncBookReq):
     # reconciliation
     wd_last_practiced = None

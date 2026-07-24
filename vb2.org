@@ -360,7 +360,9 @@ pnpm add -D daisyui@latest
 pnpm add -D @tailwindcss/vite tailwindcss
 # pnpm add -g @vue/language-server  # for Emacs
 # pnpm install -g typescript-language-server typescript  # for Emacs
+pnpm add -D eslint eslint-plugin-vue  # Emacs
 pnpm add -D openapi-typescript
+pnpm add openapi-fetch
 #+end_src
 - add to vite.config.js
 #+begin_src js
@@ -442,7 +444,50 @@ himself — do not provide code unless explicitly requested.
 - src/vite-env.d.ts
 #+begin_src js
 /// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+#+end_src
+
+*** Pinia structure (rev0)
+- booksStore
+  - books: BookSchema[]
+  - activeBook: BookSchema
+  - fetchBooks() => BookSchema[]
+  - deleteBook() => bool
+  - editBook() => BookSchema
+  - creaetBook() => BookSchema  # do I need this?
+- wordsStore
+  - words: WordSchema[]
+  - fetchWords() => WordSchema[]
+  - editWord() => WordSchema
+  - createWord() => WordSchema # do I need this?
+- pracsStore
+  - pracs: PracticeSchame[]
+  - syncBook() => activeBook, words, pracs are updated
+
+*** Wiring up
+- fe/index.html
+#+begin_src html
+<html lang="en" data-theme="bumblebee">
+#+end_src
+
+- App.vue
+#+begin_src vue
+<template>
+  <RouterView />
+</template>
+#+end_src
+
+- main.ts
+#+begin_src js
+import './style.css'
+#+end_src
+
+- add icons
+#+begin_src 
+pnpm add lucide-vue-next
 #+end_src
