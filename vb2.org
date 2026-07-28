@@ -140,7 +140,7 @@ cd ~/py/vb2
 uv venv
 uv init
 uv add sqlalchemy pydantic
-uv add flask flask-sqlalchemy authlib flask-jwt-extended
+uv add flask flask-sqlalchemy authlib flask-jwt-extended flask-cors
 uv add flask-openapi3 flask-openapi3-swagger
 uv pip list
 #+end_src
@@ -363,6 +363,7 @@ pnpm add -D @tailwindcss/vite tailwindcss
 pnpm add -D eslint eslint-plugin-vue  # Emacs
 pnpm add -D openapi-typescript
 pnpm add openapi-fetch
+pnpm add -D @vue/typescript-plugin # Emacs
 #+end_src
 - add to vite.config.js
 #+begin_src js
@@ -491,3 +492,163 @@ import './style.css'
 #+begin_src 
 pnpm add lucide-vue-next
 #+end_src
+
+
+*** Data structure and logic
+**** data structure (will use index, not ID)
+- const lw = ref<number>[]([]) // learning window
+- const ww = ref<number>[]([]) // waiting window
+- wordsNoPrac: int[]  // words without practice (for the direction)
+- lastSyncTime: DateTime
+
+**** overall flow
+- sync with server
+- decrement due counters (0 or -1)
+- create wordsNoPrac
+- fill lw and ww
+- (practice)
+- (if +1 day, sync with server)
+- on leaving practice, sync with server
+
+**** Filling lw and ww (for the direction)
+- if lw.length > 5 -> move to ww
+- if ww.length > 5 -> remove from ww
+- for steps below, if lw.length == ww.length == 5 -> quit
+- search prac with status 'review' and due_cnt == 0
+- put to lw -> ww
+- if lw.length < 5, move from ww until (lw.length == 5 or ww.length == 0)
+- search prac with status 'learning'
+- put to lw -> ww
+- search prac with status 'waiting'
+- put to lw -> ww
+- search prac with status 'new'
+- put to lw -> ww
+- from wordsNoPrac, create practice with 'new'
+- put to lw -> ww
+
+**** Practice
+- check if lastSyncTime > 1 day then sync with server
+- fill lw and ww
+- remove one at head of lw
+  - once more -> put at tail of lw
+  - ok
+    - status == new | learning -> status = waiting, put at tail of ww
+    - status == waiting -> status = review, init due_dates/counter
+    - status == review -> put at tail of ww
+  - memorized
+    - status == review -> due_dates x 2, dut_cnt = due_dates
+    - status others -> status = review, due_dates = dut_cnt = 1
+- loop from top
+
+
+*** bug
+- bug: waiting items will be learning when moved from ww to lw
+- it should be:
+  - only Okay button can set it as "waiting"
+  - when moves an item from ww to lw:
+    - "waiting" -> should stay "waiting"
+    - others -> changed to "learning"
+  - when 'new' items go into ww -> should stay 'new'
+
+
+- context 7/27
+#+begin_src 
+VB2 SESSION CONTEXT HANDOFF — frontend, PracView.vue debugging
+
+BACKEND (stable)
+- Flask + flask-openapi3, flask-cors added (CORS(app, origins=["http://localhost:5173"]))
+- POST /sync/{id} (renamed from /books/{id}) — full book+words+practices sync
+- GET /books/{id}/words — lighter endpoint (book+words only)
+- create/edit/delete book & word endpoints: NOT built yet
+
+FRONTEND ARCHITECTURE
+- Vue 3 + TS + Pinia (single store: src/stores/books.ts) + DaisyUI + Tailwind v4
+- Store state: books, words, practices (flat, separate top-level refs, NOT nested), activeBookId, pracDir ('wd'|'dw')
+- PracView.vue: local refs — lw/ww (number[] of practice indices), wordsNoPrac (number[] of word indices),
+  lastSyncTime (Date|null), pracIdx (number|null, currently-practicing index)
+
+QUEUE CONVENTION (finalized, was previously inconsistent — now fixed everywhere):
+  push = add to TAIL, shift = remove from HEAD (standard FIFO)
+
+CORE LOGIC (all implemented, most bugs fixed):
+- id2ixWord(wid)/id2ixBook(bid): id→array-index lookup, uses .entries() correctly now, returns null if not found — ALWAYS check `=== null`, not truthiness (index 0 is falsy!)
+- isNextDayOrLater(referenceDate, now): has null-guard now (returns false if referenceDate == null) — fixed bug where null lastSyncTime caused sync to fire on EVERY click, not just first
+- syncServer(): calls booksStore.syncBook(), rebuilds wordsNoPrac, decrements due_counters (only if isNextDayOrLater true), sets lastSyncTime.value = new Date()
+- moveToWins(pracs): shuffles + fills lw (to LWSIZE=5) then ww (to WWSIZE=5) from a candidate list; status overwrite guards now correctly preserve 'waiting'/'review' (only sets 'learning' if neither)
+- statusMove(status): pulls all pracs matching a status into moveToWins
+- fillWins(): single-pass (not looping) fallback chain: due reviews (due_counter==0) → shift ww-to-lw → statusMove('learning') → statusMove('waiting') → statusMove('new') → create practices from wordsNoPrac. NO fallback to non-due reviews (deliberate design choice — see below). Falls through to "quit" state if lw ends up empty/short.
+- doPrac(): syncs if needed, fillWins(), sets pracIdx = lw.value[0] (head) or null if lw empty — must reset pracIdx to null explicitly when lw is empty (recently added)
+- onceMore(): lw.value.push(lw.value.shift()) — head to tail, no status change
+- okay(): review→push to ww tail; waiting→review (due_dates=due_counter=1), shift from lw; new/learning→waiting, push to ww tail
+- memorized(): review→double due_dates, due_counter=due_dates; else→review, due_dates=due_counter=1; shift from lw
+
+DESIGN DECISION (just made): do NOT allow practicing non-due review items to pad lw/ww (avoids
+premature due_dates inflation exploit). If nothing left to fill windows, show "No due items to
+learn today. Well done!" empty state instead. lw.length==0 → empty state.
+
+TEMPLATE STATE
+- Card flip (isFlipped), Transition-wrapped front/back content
+- Buttons (Once More / Okay / Memorized) disabled via `pracIdx === null` (NOT truthy check — 0 is valid index)
+- Empty state `v-if="lw.length > 0"` .. `v-else` "No due items to learn today. Well done!"
+- TTS buttons (Word/Definition/Sample) — click handlers not yet wired, just disabled-state logic done
+- Known non-bug: Emacs eglot shows stale TS2307 false-positive errors on some files (ignore)
+
+WORKING STYLE
+Socratic, one problem at a time, concise. Kyosuke writes all code himself — don't provide code
+unless explicitly requested. Answer immediate question only, no unsolicited follow-ups.
+
+CURRENT STATUS: Core practice loop logic + empty-state handling verified working end-to-end via
+manual testing (console.log + Flask debug console + Pinia devtools). Moving to continued UI
+debugging in a fresh chat — TTS button wiring is likely next real feature to build.
+#+end_src
+
+#+begin_src 
+        BookSchema: {
+            dw_last_practiced: string | null;
+            last_edited: string;
+            wd_last_practiced: string | null;
+
+        PracticeSchema: {
+            last_edited: string;
+            last_practiced: string | null;
+
+        WordSchema: {
+            last_edited: string;
+#+end_src
+
+- context 7/28 am
+#+begin_src 
+VB2 SESSION CONTEXT HANDOFF — auth (Google OAuth + JWT), new chat
+
+STATUS: Frontend PracView.vue core practice loop is stable (dedup bugs, queue
+rotation, tz-aware datetime sync bugs all fixed this session). Sync verified
+working end-to-end with cleared DB. Moving to auth implementation next.
+
+BACKEND (stable, pre-auth)
+- Flask + flask-openapi3, flask-cors (CORS origins=["http://localhost:5173"])
+- POST /sync/{id} — full book+words+practices sync, last-write-wins per field
+  via last_edited timestamp comparison
+- GET /books/{id}/words — lighter endpoint (book+words only)
+- create/edit/delete book & word endpoints: NOT built yet
+- DB: SQLite via SQLAlchemy, MappedAsDataclass + DeclarativeBase custom Base
+- All datetime columns are DateTime(timezone=True), but SQLite doesn't
+  actually persist tzinfo — convention is aware-UTC in Python (.astimezone(UTC),
+  no tzinfo stripping), stored naive-but-UTC-valued in SQLite
+
+AUTH PLAN (decided, not yet implemented)
+- JWT via flask-jwt-extended
+- Google OAuth via authlib
+- Deferred until now — no auth currently on any endpoint
+- user_id already exists as a field on Word/Practice (currently presumably
+  hardcoded or unenforced client-side)
+
+FRONTEND ARCHITECTURE
+- Vue 3 + TS + Pinia (single store: src/stores/books.ts) + DaisyUI + Tailwind v4
+- openapi-typescript generated client for API calls (see syncBook() pattern)
+- Store state: books, words, practices (flat, separate top-level refs) + activeBookId, pracDir
+
+WORKING STYLE
+Socratic, one problem at a time, concise. Kyosuke writes all code himself —
+don't provide code unless explicitly requested. Answer immediate question only.
+#+end_src
+

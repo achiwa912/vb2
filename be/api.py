@@ -1,7 +1,9 @@
 import os
+from datetime import UTC
 
 # from flask import Flask
 # from flask_pydantic import validate
+from flask_cors import CORS
 from flask_openapi3 import OpenAPI, Info
 from sqlalchemy import select
 from .database import db
@@ -23,6 +25,7 @@ info = Info(title="vb2 server", version="0.0.1")
 app = OpenAPI(__name__, info=info)
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(basedir, 'db.db')}"
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"echo": True}
+CORS(app, origins=["http://localhost:5173"])
 
 db.init_app(app)
 
@@ -51,7 +54,17 @@ def sync_book(path: BookPath, body: SyncBookReq):
     wd_last_practiced = None
     dw_last_practiced = None
     for cp in body.practices:
-        if not cp.id:
+        cp.last_edited = cp.last_edited.astimezone(UTC)
+        if cp.last_practiced:
+            cp.last_practiced = cp.last_practiced.astimezone(UTC)
+        sp = db.session.execute(
+            select(Practice).where(
+                Practice.word_id == cp.word_id,
+                Practice.user_id == cp.user_id,
+                Practice.direction == cp.direction,
+            )
+        ).scalar_one_or_none()
+        if not sp:
             sp = Practice(
                 direction=cp.direction,
                 last_practiced=cp.last_practiced,
@@ -74,9 +87,10 @@ def sync_book(path: BookPath, body: SyncBookReq):
                 ):
                     dw_last_practiced = cp.last_practiced
         else:
-            sp = db.session.execute(
-                select(Practice).where(Practice.id == cp.id)
-            ).scalar_one()
+            # sp = db.session.execute(
+            #     select(Practice).where(Practice.id == cp.id)
+            # ).scalar_one()
+            print(f"+++ {cp.last_edited} vs {sp.last_edited}")
             if cp.last_edited > sp.last_edited:
                 # sp.direction=cp.direction
                 sp.last_practiced = cp.last_practiced
@@ -98,9 +112,13 @@ def sync_book(path: BookPath, body: SyncBookReq):
                     ):
                         dw_last_practiced = cp.last_practiced
     b = db.session.execute(select(Book).where(Book.id == path.id)).scalar_one()
-    if wd_last_practiced and wd_last_practiced > b.wd_last_practiced:
+    if wd_last_practiced and (
+        not b.wd_last_practiced or wd_last_practiced > b.wd_last_practiced
+    ):
         b.wd_last_practiced = wd_last_practiced
-    if dw_last_practiced and dw_last_practiced > b.dw_last_practiced:
+    if dw_last_practiced and (
+        not b.dw_last_practiced or dw_last_practiced > b.dw_last_practiced
+    ):
         b.dw_last_practiced = dw_last_practiced
     # no need to update b.last_updated
     db.session.commit()
