@@ -37,6 +37,17 @@ class PracticeSchema(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
 
 
+class GglAuthReq(BaseModel):
+    token: str  # jwt token
+
+
+class GglAuthResp(BaseModel):
+    user_id: int
+    access_token: str
+    email: str
+    name: str
+
+
 class ListBooksResp(BaseModel):
     books: list[BookSchema]
 

@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/auth/ggl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["auth_ggl_auth_ggl_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/books": {
         parameters: {
             query?: never;
@@ -79,6 +95,22 @@ export interface components {
              * @default null
              */
             wd_last_practiced: string | null;
+        };
+        /** GglAuthReq */
+        GglAuthReq: {
+            /** Token */
+            token: string;
+        };
+        /** GglAuthResp */
+        GglAuthResp: {
+            /** Access Token */
+            access_token: string;
+            /** Email */
+            email: string;
+            /** Name */
+            name: string;
+            /** User Id */
+            user_id: number;
         };
         /** ListBooksResp */
         ListBooksResp: {
@@ -211,6 +243,39 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    auth_ggl_auth_ggl_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GglAuthReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GglAuthResp"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorModel"][];
+                };
+            };
+        };
+    };
     list_books_books_get: {
         parameters: {
             query?: never;

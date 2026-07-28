@@ -57,10 +57,7 @@ words = [
 ]
 
 with app.app_context():
-    u = User(sub="test", email="test@test.com", name="test")
-    db.session.add(u)
-    db.session.commit()
-    b = Book(user_id=u.id, name="book1", last_edited=datetime.now(timezone.utc))
+    b = Book(user_id=1, name="book1", last_edited=datetime.now(timezone.utc))
     db.session.add(b)
     db.session.commit()
     for w in words:

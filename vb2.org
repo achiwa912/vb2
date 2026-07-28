@@ -142,6 +142,8 @@ uv init
 uv add sqlalchemy pydantic
 uv add flask flask-sqlalchemy authlib flask-jwt-extended flask-cors
 uv add flask-openapi3 flask-openapi3-swagger
+uv add python-dotenv
+uv add google-auth requests
 uv pip list
 #+end_src
 

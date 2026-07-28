@@ -17,4 +17,13 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    proxy: {
+      '/auth': 'http://localhost:8000',
+      '/books': 'http://localhost:8000',
+      '/words': 'http://localhost:8000',
+      '/prac': 'http://localhost:8000',
+      '/sync': 'http://localhost:8000',
+    },
+  },
 })
