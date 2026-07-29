@@ -39,7 +39,7 @@ class Book(Base):
     name: Mapped[str] = mc(String(128), nullable=False)
     last_edited: Mapped[datetime] = (
         mc(  # not updated when wd/dw_last_practiced gets updated
-            DateTime(timezone=True), server_default=func.now()
+            DateTime(timezone=True), server_default=func.now(), init=False
         )
     )
     wd_last_practiced: Mapped[datetime] = mc(

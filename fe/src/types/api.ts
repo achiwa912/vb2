@@ -29,11 +29,43 @@ export interface paths {
         };
         get: operations["list_books_books_get"];
         put?: never;
-        post?: never;
+        post: operations["create_book_books_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/books/{bid}/words/{wid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_word_books__int_bid__words__int_wid__delete"];
+        options?: never;
+        head?: never;
+        patch: operations["edit_word_books__int_bid__words__int_wid__patch"];
+        trace?: never;
+    };
+    "/books/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_book_books__int_id__delete"];
+        options?: never;
+        head?: never;
+        patch: operations["edit_book_books__int_id__patch"];
         trace?: never;
     };
     "/books/{id}/words": {
@@ -45,7 +77,7 @@ export interface paths {
         };
         get: operations["list_book_words_books__int_id__words_get"];
         put?: never;
-        post?: never;
+        post: operations["create_word_books__int_id__words_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -72,13 +104,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** BookResp */
+        BookResp: {
+            book: components["schemas"]["BookSchema"];
+        };
         /** BookSchema */
         BookSchema: {
             /**
              * Dw Last Practiced
-             * @default null
+             * Format: date-time
              */
-            dw_last_practiced: string | null;
+            dw_last_practiced: string;
             /** Id */
             id: number;
             /**
@@ -92,9 +128,26 @@ export interface components {
             user_id: number;
             /**
              * Wd Last Practiced
+             * Format: date-time
+             */
+            wd_last_practiced: string;
+        };
+        /** CreateBookReq */
+        CreateBookReq: {
+            /** Name */
+            name: string;
+        };
+        /** CreateWordReq */
+        CreateWordReq: {
+            /** Definition */
+            definition: string;
+            /**
+             * Sample
              * @default null
              */
-            wd_last_practiced: string | null;
+            sample: string | null;
+            /** Word */
+            word: string;
         };
         /** GglAuthReq */
         GglAuthReq: {
@@ -121,6 +174,29 @@ export interface components {
         ListWordsResp: {
             /** Words */
             words: components["schemas"]["WordSchema"][];
+        };
+        /** PatchBookReq */
+        PatchBookReq: {
+            /** Name */
+            name: string;
+        };
+        /** PatchWordReq */
+        PatchWordReq: {
+            /**
+             * Definition
+             * @default null
+             */
+            definition: string | null;
+            /**
+             * Sample
+             * @default null
+             */
+            sample: string | null;
+            /**
+             * Word
+             * @default null
+             */
+            word: string | null;
         };
         /**
          * PracDir
@@ -216,6 +292,10 @@ export interface components {
              */
             url: string | null;
         };
+        /** WordResp */
+        WordResp: {
+            word: components["schemas"]["WordSchema"];
+        };
         /** WordSchema */
         WordSchema: {
             /** Book Id */
@@ -230,7 +310,7 @@ export interface components {
              */
             last_edited: string;
             /** Sample */
-            sample: string | null;
+            sample: string;
             /** Word */
             word: string;
         };
@@ -305,6 +385,169 @@ export interface operations {
             };
         };
     };
+    create_book_books_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBookReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookResp"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorModel"][];
+                };
+            };
+        };
+    };
+    delete_word_books__int_bid__words__int_wid__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bid: number;
+                wid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorModel"][];
+                };
+            };
+        };
+    };
+    edit_word_books__int_bid__words__int_wid__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bid: number;
+                wid: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchWordReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WordResp"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorModel"][];
+                };
+            };
+        };
+    };
+    delete_book_books__int_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorModel"][];
+                };
+            };
+        };
+    };
+    edit_book_books__int_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchBookReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookResp"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorModel"][];
+                };
+            };
+        };
+    };
     list_book_words_books__int_id__words_get: {
         parameters: {
             query?: never;
@@ -323,6 +566,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListWordsResp"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorModel"][];
+                };
+            };
+        };
+    };
+    create_word_books__int_id__words_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWordReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WordResp"];
                 };
             };
             /** @description Unprocessable Content */

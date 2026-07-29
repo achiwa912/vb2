@@ -1,6 +1,7 @@
 import os
-from datetime import UTC, timedelta
+from datetime import UTC, timedelta, datetime, timezone
 from dotenv import load_dotenv
+from sqlalchemy.orm import selectinload
 
 # from flask import Flask
 # from flask_pydantic import validate
@@ -20,9 +21,16 @@ from .models import User, Book, Word, Practice, PracDir
 from .schemas import (
     GglAuthReq,
     GglAuthResp,
+    CreateBookReq,
+    PatchBookReq,
+    BookResp,
     ListBooksResp,
     ListWordsResp,
     BookPath,
+    WordPath,
+    CreateWordReq,
+    PatchWordReq,
+    WordResp,
     SyncBookReq,
     SyncBookResp,
     BookSchema,
@@ -85,6 +93,104 @@ def list_books() -> dict[str, ListBooksResp]:
         db.session.execute(select(Book).where(Book.user_id == user_id)).scalars().all()
     )
     return ListBooksResp.model_validate({"books": books}).model_dump(mode="json")
+
+
+@app.post("/books/<int:id>/words", responses={200: WordResp})
+@jwt_required()
+def create_word(path: BookPath, body: CreateWordReq) -> dict[str, WordResp]:
+    user_id = int(get_jwt_identity())
+    b = db.session.execute(
+        select(Book).where(Book.id == path.id, Book.user_id == user_id)
+    ).scalar_one_or_none()
+    if not b:
+        return {"message": "Book not found"}, 404
+    w = Word(
+        word=body.word, definition=body.definition, sample=body.sample, book_id=path.id
+    )
+    db.session.add(w)
+    db.session.commit()
+    return WordResp.model_validate({"word": w}).model_dump(mode="json")
+
+
+@app.patch("/books/<int:bid>/words/<int:wid>", responses={200: WordResp})
+@jwt_required()
+def edit_word(path: WordPath, body: PatchWordReq) -> dict[str, WordResp]:
+    user_id = int(get_jwt_identity())
+    w = db.session.execute(
+        select(Word)
+        .join(Book)
+        .where(Word.id == path.wid, Book.id == path.bid, Book.user_id == user_id)
+    ).scalar_one_or_none()
+    if not w:
+        return {"message": "Word not found"}, 404
+    if body.word is not None:
+        w.word = body.word
+    if body.definition is not None:
+        w.definition = body.definition
+    if body.sample is not None:
+        w.sample = body.sample
+    db.session.commit()
+    return WordResp.model_validate({"word": w}).model_dump(mode="json")
+
+
+@app.delete("/books/<int:bid>/words/<int:wid>", responses={200: None})
+@jwt_required()
+def delete_word(path: WordPath):
+    user_id = int(get_jwt_identity())
+    w = db.session.execute(
+        select(Word)
+        .options(selectinload(Word.practices))
+        .join(Book)
+        .where(Word.id == path.wid, Book.id == path.bid, Book.user_id == user_id)
+    ).scalar_one_or_none()
+    if not w:
+        return {"message": "Word not found"}, 404
+    db.session.delete(w)
+    db.session.commit()
+    return {"message": f"Deleted word id={path.wid} and associated practices"}, 200
+
+
+@app.post("/books", responses={200: BookResp})
+@jwt_required()
+def create_book(body: CreateBookReq) -> dict[str, BookResp]:
+    user_id = int(get_jwt_identity())
+    b = Book(name=body.name, user_id=user_id)
+    db.session.add(b)
+    db.session.commit()
+    return BookResp.model_validate({"book": b}).model_dump(mode="json")
+
+
+@app.patch("/books/<int:id>", responses={200: BookResp})
+@jwt_required()
+def edit_book(path: BookPath, body: PatchBookReq) -> dict[str, BookResp]:
+    user_id = int(get_jwt_identity())
+    b = db.session.execute(
+        select(Book).where(Book.id == path.id, Book.user_id == user_id)
+    ).scalar_one_or_none()
+    if not b:
+        return {"message": "Book not found"}, 404
+    b.name = body.name
+    b.last_edited = datetime.now(timezone.utc)
+    db.session.commit()
+    return BookResp.model_validate({"book": b}).model_dump(mode="json")
+
+
+@app.delete("/books/<int:id>", responses={200: None})
+@jwt_required()
+def delete_book(path: BookPath):
+    user_id = int(get_jwt_identity())
+    b = db.session.execute(
+        select(Book)
+        .options(selectinload(Book.words))
+        .where(Book.id == path.id, Book.user_id == user_id)
+    ).scalar_one_or_none()
+    if not b:
+        return {"message": "Book not found"}, 404
+    if b.words:
+        return {"message": "Book not empty"}, 400
+    db.session.delete(b)
+    db.session.commit()
+    return {"message": f"Deleted book id={path.id}"}, 200
 
 
 @app.get("/books/<int:id>/words", responses={200: ListWordsResp})
