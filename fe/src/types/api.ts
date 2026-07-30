@@ -110,11 +110,8 @@ export interface components {
         };
         /** BookSchema */
         BookSchema: {
-            /**
-             * Dw Last Practiced
-             * Format: date-time
-             */
-            dw_last_practiced: string;
+            /** Dw Last Practiced */
+            dw_last_practiced: string | null;
             /** Id */
             id: number;
             /**
@@ -126,11 +123,8 @@ export interface components {
             name: string;
             /** User Id */
             user_id: number;
-            /**
-             * Wd Last Practiced
-             * Format: date-time
-             */
-            wd_last_practiced: string;
+            /** Wd Last Practiced */
+            wd_last_practiced: string | null;
         };
         /** CreateBookReq */
         CreateBookReq: {
@@ -310,7 +304,7 @@ export interface components {
              */
             last_edited: string;
             /** Sample */
-            sample: string;
+            sample: string | null;
             /** Word */
             word: string;
         };

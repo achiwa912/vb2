@@ -92,6 +92,13 @@ def list_books() -> dict[str, ListBooksResp]:
     books = (
         db.session.execute(select(Book).where(Book.user_id == user_id)).scalars().all()
     )
+    # lbr = ListBooksResp.model_validate({"books": books})
+    # for b in lbr.books:
+    #     b.last_edited = b.last_edited.replace(tzinfo=timezone.utc)
+    #     if b.wd_last_practiced:
+    #         b.wd_last_practiced = b.wd_last_practiced.replace(tzinfo=timezone.utc)
+    #     if b.dw_last_practiced:
+    #         b.dw_last_practiced = b.dw_last_practiced.replace(tzinfo=timezone.utc)
     return ListBooksResp.model_validate({"books": books}).model_dump(mode="json")
 
 
@@ -129,6 +136,7 @@ def edit_word(path: WordPath, body: PatchWordReq) -> dict[str, WordResp]:
         w.definition = body.definition
     if body.sample is not None:
         w.sample = body.sample
+    w.last_edited = datetime.now(timezone.utc)
     db.session.commit()
     return WordResp.model_validate({"word": w}).model_dump(mode="json")
 
@@ -163,6 +171,8 @@ def create_book(body: CreateBookReq) -> dict[str, BookResp]:
 @app.patch("/books/<int:id>", responses={200: BookResp})
 @jwt_required()
 def edit_book(path: BookPath, body: PatchBookReq) -> dict[str, BookResp]:
+    if not body.name:
+        return {"message": "Invalid book name"}, 400
     user_id = int(get_jwt_identity())
     b = db.session.execute(
         select(Book).where(Book.id == path.id, Book.user_id == user_id)
@@ -222,9 +232,9 @@ def sync_book(path: BookPath, body: SyncBookReq):
     wd_last_practiced = None
     dw_last_practiced = None
     for cp in body.practices:
-        cp.last_edited = cp.last_edited.astimezone(UTC)
+        cp.last_edited = cp.last_edited.astimezone(UTC).replace(tzinfo=None)
         if cp.last_practiced:
-            cp.last_practiced = cp.last_practiced.astimezone(UTC)
+            cp.last_practiced = cp.last_practiced.astimezone(UTC).replace(tzinfo=None)
         sp = db.session.execute(
             select(Practice).where(
                 Practice.word_id == cp.word_id,

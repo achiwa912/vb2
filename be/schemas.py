@@ -1,6 +1,6 @@
 from typing import ClassVar, Literal
-from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime, timezone
+from pydantic import BaseModel, ConfigDict, field_serializer
 from .models import PracStat, PracDir
 
 
@@ -8,20 +8,34 @@ class BookSchema(BaseModel):
     id: int
     name: str
     last_edited: datetime
-    wd_last_practiced: datetime
-    dw_last_practiced: datetime
+    wd_last_practiced: datetime | None
+    dw_last_practiced: datetime | None
     user_id: int
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
+
+    @field_serializer("last_edited", "wd_last_practiced", "dw_last_practiced")
+    def serialize_last_time(self, dt: datetime | None) -> datetime | None:
+        if dt is None:
+            return dt
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
 
 
 class WordSchema(BaseModel):
     id: int
     word: str
     definition: str
-    sample: str
+    sample: str | None
     last_edited: datetime
     book_id: int
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
+
+    @field_serializer("last_edited")
+    def serialize_last_edited(self, dt: datetime) -> datetime:
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
 
 
 class PracticeSchema(BaseModel):
@@ -35,6 +49,14 @@ class PracticeSchema(BaseModel):
     user_id: int
     word_id: int
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
+
+    @field_serializer("last_edited", "last_practiced")
+    def serialize_last_time(self, dt: datetime | None) -> datetime | None:
+        if dt is None:
+            return dt
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
 
 
 class GglAuthReq(BaseModel):

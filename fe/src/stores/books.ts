@@ -35,6 +35,7 @@ export const useBooksStore = defineStore('books', () => {
     const id = activeBookId.value
     if (id === null) return
     const { data, error } = await client.GET("/books/{id}/words", {
+      headers: { 'Authorization': `Bearer ${userStore.access_token}`},
       params: { path: { id: id } },
     })
     if (error) {
@@ -46,6 +47,7 @@ export const useBooksStore = defineStore('books', () => {
   async function syncBook() {
     if (activeBookId.value === null) return
     const { data, error } = await client.POST('/sync/{id}', {
+      headers: { 'Authorization': `Bearer ${userStore.access_token}`},
       params: { path: { id: activeBookId.value } },
       body: { practices: pracs.value },
     })
@@ -57,7 +59,59 @@ export const useBooksStore = defineStore('books', () => {
     words.value = data.words
     pracs.value = data.practices
   }
+
+  async function addWord(word: WordSchema): Promise<boolean> {
+    if (!word) return false
+    const { data, error } = await client.POST('/books/{id}/words', {
+      headers: { 'Authorization': `Bearer ${userStore.access_token}`},
+      params: { path: { id: word.book_id } },
+      body: { word: word.word, definition: word.definition, sample: word.sample },
+    })
+    if (error) return false
+    words.value.push(data.word)
+    return true
+  }
+
+  async function editWord(word: WordSchema): Promise<boolean> {
+    if (!word) return false
+    const { data, error } = await client.PATCH('/books/{bid}/words/{wid}', {
+      headers: { 'Authorization': `Bearer ${userStore.access_token}`},
+      params: { path: { bid: word.book_id, wid: word.id } },
+      body: { word: word.word, definition: word.definition, sample: word.sample },
+    })
+    if (error) return false
+    const wix: number | null = id2ixWord(word.id)
+    if (wix === null) return false
+    words.value[wix] = data.word
+    return true
+  }
+
+  async function deleteWord(word: WordSchema): Promise<boolean> {
+    if (!word) return false
+    const { error } = await client.DELETE('/books/{bid}/words/{wid}', {
+      headers: { 'Authorization': `Bearer ${userStore.access_token}`},
+      params: { path: { bid: word.book_id, wid: word.id } },
+    })
+    if (error) return false
+    const wix: number | null = id2ixWord(word.id)
+    if (wix === null) return false
+    pracs.value.splice(wix, 1)
+    return true
+  }
+    
+  function id2ixWord(wid: number): number | null {
+    for (const [ix, w] of words.value.entries()) {
+      if (w.id == wid) return ix
+    }
+    return null
+  }
+
+  function id2ixBook(bid: number): number | null {
+    for (const [ix, b] of books.value.entries()) {
+      if (b.id == bid) return ix
+    }
+    return null
+  }
   
-  
-  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook }
+  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook }
 })

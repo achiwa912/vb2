@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { ThumbsUp, ThumbsDown, SkipForward, Music, Music2, Music3, RefreshCw } from '@lucide/vue'
 import type { components } from '@/types/api'
@@ -18,6 +19,23 @@ const lastSyncTime = ref<Date | null>(null)
 const pracIdx = ref<number | null>(null) // the one currently practicing
 const voices = ref<SpeechSynthesisVoice[]>([]) // for TTS
 
+const infoLearning = computed(() => {
+  return booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && ['learning', 'waiting'].includes(prac.status))).length || 0
+})
+
+const infoDue = computed(() => {
+  return booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && ['review'].includes(prac.status) && prac.due_counter == 0)).length || 0
+})
+
+const infoNew = computed(() => {
+  return booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && ['new'].includes(prac.status))).length || 0
+})
+
+const infoWithin3 = computed(() => {
+  return booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && ['review'].includes(prac.status) && prac.due_counter <= 3)).length || 0
+})
+
+
 const flipCard = () => { isFlipped.value = !isFlipped.value }
 
 function isNextDayOrLater(referenceDate: Date, now: Date = new Date()): boolean {
@@ -28,20 +46,6 @@ function isNextDayOrLater(referenceDate: Date, now: Date = new Date()): boolean 
   return now >= startOfNextDay;
 }
 
-function id2ixWord(wid: number): number | null {
-  for (const [ix, w] of booksStore.words.entries()) {
-    if (w.id == wid) return ix
-  }
-  return null
-}
-
-function id2ixBook(bid: number): number | null {
-  for (const [ix, b] of booksStore.books.entries()) {
-    if (b.id == bid) return ix
-  }
-  return null
-}
-
 
 async function syncServer() {
   await booksStore.syncBook()
@@ -50,7 +54,7 @@ async function syncServer() {
   let wnp = [...Array(booksStore.words.length).keys()]
   for (const prac of booksStore.pracs) {
     if (prac.direction == booksStore.pracDir) {
-      const ixDel = wnp.indexOf(id2ixWord(prac.word_id))
+      const ixDel = wnp.indexOf(booksStore.id2ixWord(prac.word_id))
       if (ixDel !== -1) {
 	wnp.splice(ixDel, 1)
       }
@@ -63,14 +67,14 @@ async function syncServer() {
   wordsNoPrac.value = wnp
 
   // decrement due_counters
-  if (id2ixBook(booksStore.activeBookId) === null) return
+  if (booksStore.id2ixBook(booksStore.activeBookId) === null) return
   if (booksStore.pracDir == 'wd') {
     if (!isNextDayOrLater(
-      booksStore.books[id2ixBook(booksStore.activeBookId)].wd_last_practiced
+      booksStore.books[booksStore.id2ixBook(booksStore.activeBookId)].wd_last_practiced
     )) return
   } else {
     if (!isNextDayOrLater(
-      booksStore.books[id2ixBook(booksStore.activeBookId)].dw_last_practiced
+      booksStore.books[booksStore.id2ixBook(booksStore.activeBookId)].dw_last_practiced
     )) return
   }
   for (let prac of booksStore.pracs) {
@@ -80,6 +84,8 @@ async function syncServer() {
   }
   lastSyncTime.value = new Date() // now
 }
+
+// ====== LW & WW ==========================================
 
 function moveToWins(pracs: number[]): boolean {  // randomly pick from ps
   const ps = [...pracs]
@@ -107,7 +113,7 @@ function moveToWins(pracs: number[]): boolean {  // randomly pick from ps
 function statusMove(status: string): boolean {
   let ps = []
   for (let [ix, p] of booksStore.pracs.entries()) {
-    if (p.status == status && ![...lw.value, ...ww.value].includes(ix)) {
+    if (p.direction == booksStore.pracDir && p.status == status && ![...lw.value, ...ww.value].includes(ix)) {
       ps.push(ix)
     }
   }
@@ -127,7 +133,7 @@ function fillWins() {
   // pick 'due' ones first
   let ps = []
   for (let [ix, p] of booksStore.pracs.entries()) {
-    if (p.status == 'review' && p.due_counter == 0) {
+    if (p.direction == booksStore.pracDir && p.status == 'review' && p.due_counter == 0) {
       ps.unshift(ix)
     }
   }
@@ -183,28 +189,9 @@ function fillWins() {
     if (lw.value.length == LWSIZE && ww.value.length == WWSIZE) return
   }
   wordsNoPrac.value = [...wnp]
-
-  // non-due review items in the order of due_counter (large to small)
-  // ps = []
-  // for (let [ix, p] of booksStore.pracs.entries()) {
-  //   if (p.status == 'review' && p.due_counter > 0) {
-  // 	ps.unshift(ix)
-  //   }
-  // }
-  // ps.sort((a, b) => booksStore.pracs[b].due_counter - booksStore.pracs[a].due_counter)  // descending (large to small)
-  // while (ps.length && lw.value.length < LWSIZE) {
-  //   let pix = ps.pop()  // smallest
-  //   if (!['review', 'waiting'].includes(booksStore.pracs[pix].status)) {
-  // 	booksStore.pracs[pix].status = 'learning'
-  //   }
-  //   lw.value.push(pix)  // tail
-  // }
-  // while (ps.length && ww.value.length < WWSIZE) {
-  //   let pix = ps.pop()  // smallest
-  //   ww.value.push(pix) // tail
-  // }
-  //}
 }
+
+// ====== practice =========================================
 
 async function doPrac() {
   if (isNextDayOrLater(lastSyncTime.value)) {
@@ -271,6 +258,8 @@ function okay() {
   doPrac()
 }
 
+// ====== TTS ==============================================
+
 const loadVoices = () => {
   if (!('speechSynthesis' in window)) return
   voices.value = window.speechSynthesis.getVoices()
@@ -326,7 +315,14 @@ const speakTts = (txt: string) => {
   window.speechSynthesis.speak(utterance)
 }
 
+onBeforeRouteLeave(async () => {
+  await syncServer()
+})
+
 onMounted(async () => {
+  lw.value = []
+  ww.value = []
+  //booksStore.pracs = []
   loadVoices()
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = loadVoices
@@ -342,10 +338,31 @@ onMounted(async () => {
     <li><div @click="syncServer"><RefreshCw />Sync</div></li>
     <div class="divider my-1"></div>
   </Navbar>
+  
   <div>
+    <!-- Title -->
+    <div class="flex mt-4 mx-4 items-end">
+      <h1 class="text-3xl font-semibold">Practice</h1>
+      <div class="text-base-content/50 ml-4">{{ booksStore.pracDir == 'wd' ? 'Word to Definition' : 'Definiton to Word' }}</div>
+    </div>
+
+    <!-- info stat -->
+    <div class="card card-lg bg-base-100 border border-base-300 rounded-xl shadow-sm mt-4 mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 " :class="booksStore.pracDir == 'wd' ? 'bg-success text-success-content' : 'bg-info text-info-content'">
+      <div class="card-body py-4">
+	<div class="grid grid-cols-4 gap-4">
+	  <div>learning: {{ infoLearning }}</div>
+	  <div>new: {{ infoNew }}</div>
+	  <div>due: {{ infoDue }}</div>
+	  <div>due within 3 days: {{ infoWithin3 }}</div>
+	</div>
+      </div>
+    </div>
+
+    
+    <!-- practice card -->
     <div class="flex items-center justify-center">
 
-      <div v-if="lw.length > 0" class="card card-lg bg-base-100 w-full h-[280px] border border-base-300 rounded-3xl shadow-sm mt-8 mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200">
+      <div v-if="lw.length > 0" class="card card-lg bg-base-100 w-full h-[280px] border border-base-300 rounded-3xl shadow-sm mt-4 mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200">
 	<!-- Card Header/Body Wrapper -->
 	<div @click="pracIdx !== null && (isFlipped = !isFlipped)" class="card-body flex flex-col justify-between h-full p-4 cursor-pointer">
     
@@ -363,24 +380,24 @@ onMounted(async () => {
 	    >
               <!-- Front Content -->
               <div v-if="!isFlipped" key="front" class="flex flex-col items-center justify-center space-y-4">
-		<h1 v-if="booksStore.pracdir === 'dw'" class="text-4xl font-bold text-center">
-		  {{ booksStore.words[id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.word }}
+		<h1 v-if="booksStore.pracDir == 'wd'" class="text-4xl font-bold text-center">
+		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.word }}
 		</h1>
 		<h1 v-else class="text-4xl font-bold text-center">
-		  {{ booksStore.words[id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.definition }}
+		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.definition }}
 		</h1>
               </div>
 
               <!-- Back Content -->
               <div v-else key="back" class="flex flex-col items-center justify-center space-y-4 overflow-y-auto max-h-[220px] px-2">
-		<h1 class="text-3xl font-bold text-center">{{ booksStore.words[id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.word }}</h1>
+		<h1 class="text-3xl font-bold text-center">{{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.word }}</h1>
           
 		<p class="text-lg opacity-80 text-center">
-		  {{ booksStore.words[id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.definition }}
+		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.definition }}
 		</p>
 
 		<p class="italic text-base-content/70 bg-base-100/50 rounded-xl text-center">
-		  {{ booksStore.words[id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.sample }}
+		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.sample }}
 		</p>
               </div>
 	    </Transition>
@@ -390,9 +407,9 @@ onMounted(async () => {
 	  <div class="flex flex-col items-center gap-3 pt-2 border-t border-base-200/50">
 	    <!-- TTS -->
 	    <div class="flex justify-center gap-2 mb-3" @click.stop>
-	      <button @click.stop="speakTts(booksStore.words[id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.word)" class="btn btn-sm btn-success text-sm" :disabled="pracIdx === null || booksStore.pracDir === null || (!isFlipped && booksStore.pracDir !== 'wd')"><Music2 />Word</button>
-	      <button @click.stop="speakTts(booksStore.words[id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.sample)" class="btn btn-sm btn-info text-sm" :disabled="pracIdx === null || booksStore.pracDir === null || !isFlipped"><Music />Sample</button>
-	      <button @click.stop="speakTts(booksStore.words[id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.definition)" class="btn btn-sm btn-error text-sm" :disabled="pracIdx === null || booksStore.pracDir === null || (!isFlipped && booksStore.pracDir !== 'dw')"><Music3 />Definition</button>
+	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.word)" class="btn btn-sm btn-success text-sm" :disabled="pracIdx === null || booksStore.pracDir === null || (!isFlipped && booksStore.pracDir !== 'wd')"><Music2 />Word</button>
+	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.definition)" class="btn btn-sm btn-error text-sm" :disabled="pracIdx === null || booksStore.pracDir === null || (!isFlipped && booksStore.pracDir !== 'dw')"><Music3 />Definition</button>
+	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.sample)" class="btn btn-sm btn-info text-sm" :disabled="pracIdx === null || booksStore.pracDir === null || !isFlipped"><Music />Sample</button>
 	    </div>
 	    <!-- Action buttons -->
 	    <div class="card-actions justify-center gap-2">
@@ -417,7 +434,11 @@ onMounted(async () => {
 </div>
 
     </div>
+
+
+    
   </div>
   <p>LW: {{ lw }}</p>
   <p>WW: {{ ww }}</p>
+  <p>wordsNoPrac: {{ wordsNoPrac }}</p>
 </template>

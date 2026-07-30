@@ -1,9 +1,20 @@
 <script setup lang="ts">
-// import router from '@/router/index'
-// import { useAuthStore } from '@/stores/auth'
-// 
-// const authStore = useAuthStore()
-// 
+import { useRouter, useRoute } from 'vue-router'
+import { useBooksStore } from '@/stores/books'
+
+const router = useRouter()
+const route = useRoute()
+const booksStore = useBooksStore()
+
+function goHome() {
+  booksStore.activeBookId = null
+  router.push('/')
+}
+
+function goWords() {
+  router.push('/words')
+}
+
 // const logout = () => {
 //   authStore.logout()
 //   router.push('/login')
@@ -16,17 +27,26 @@
     <div class="max-w-7xl mx-auto w-full px-6 py-3">
       <div class="flex items-center justify-between w-full">
         
-        <!-- Logo -->
-        <a 
-          href="/" 
-          class="flex items-center gap-3 group"
-        >
-          <div class="w-12 h-8 bg-primary rounded-2xl flex items-center justify-center transition-all group-hover:rotate-12">
+        <div class="flex items-center gap-3 group">
+
+          <!-- Logo -->
+          <div @click="goHome" class="w-12 h-8 bg-primary rounded-2xl flex items-center justify-center transition-all group-hover:rotate-12 cursor-pointer">
             <span class="text-white font-bold text-xl">vB</span>
           </div>
-          <span class="text-2xl font-semibold tracking-tight">vocaBull</span>
-        </a>
+          <span @click="goHome" class="text-2xl font-semibold tracking-tight cursor-pointer">vocaBull</span>
+	  
+	  <!-- Breadcrumbs -->
+	  <div v-if="route.path.includes('/prac')" class="flex items-center text-sm mx-6">
+	    <div>
+	      <span class="text-base-content/30">></span>
+	      <span @click="goWords" class="cursor-pointer ml-2">{{ booksStore.books[booksStore.id2ixBook(booksStore.activeBookId)]?.name }}</span>
+	    </div>
+	  </div>
+	
+        </div>
 
+	
+	
         <!-- User Menu -->
         <div class="dropdown dropdown-end">
           <label 
