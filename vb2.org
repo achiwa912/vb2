@@ -654,3 +654,67 @@ Socratic, one problem at a time, concise. Kyosuke writes all code himself —
 don't provide code unless explicitly requested. Answer immediate question only.
 #+end_src
 
+- context 7/29 am
+#+begin_src 
+VB2 SESSION CONTEXT HANDOFF — auth (Google OAuth + JWT) COMPLETE, new chat
+STATUS: Full Google OAuth + JWT flow verified end-to-end (login → token
+issued → protected /books fetch → real data rendered). Ready to move to
+create/edit/delete endpoints next.
+
+BACKEND (auth complete)
+- Flask + flask-openapi3, flask-jwt-extended, google-auth (id_token.verify_oauth2_token)
+- python-dotenv loaded in app.py; .env holds JWT_SECRET_KEY, GGL_CLIENT_ID (gitignored)
+- app.config["JWT_SECRET_KEY"], JWTManager(app), JWT_ACCESS_TOKEN_EXPIRES=timedelta(days=14)
+- User model exists (id, sub, email, name, books/practices relationships)
+- POST /auth/ggl — verifies Google ID token via id_token.verify_oauth2_token(
+  body.token, requests.Request(), os.getenv("GGL_CLIENT_ID")), 401 on ValueError,
+  looks up/creates User by sub, create_access_token(identity=str(user.id))
+  [KEY GOTCHA: identity must be str, not int — "Subject must be a string" error otherwise]
+- GglAuthReq{token: str} / GglAuthResp{user_id, access_token, email, name}
+- @jwt_required() + get_jwt_identity() (cast to int) added to /books, 
+  /books/<int:id>/words, /sync/<int:id>
+- Ownership checks: /books/<id>/words and /sync/<id> verify Book.user_id ==
+  current user via single query: select(Book).where(Book.user_id==uid, Book.id==path.id),
+  return 404 if not found (not 401, avoids leaking existence)
+- create/edit/delete book & word endpoints: still NOT built
+
+FRONTEND (auth complete)
+- vite.config.ts: server.proxy forwards /auth, /books, /sync → http://localhost:8000
+  [Flask runs on 8000, Vite dev server on 5173 — needed or all backend calls 404]
+- VITE_GOOGLE_CLIENT_ID in .env (Vite requires VITE_ prefix to expose to client code)
+- LoginView.vue: loads GIS script dynamically in onMounted, renderButton, 
+  handleCredentialResponse posts idToken to /auth/ggl, on success calls
+  userStore.setUser(data) + router.push('/books') (setUser only called inside
+  the res.ok branch)
+- stores/user.ts (useUserStore, Pinia setup store): state = user_id, email,
+  name, access_token; setUser(user: GglAuthResp) writes state + localStorage
+  key 'user'; loadUser() reads it back — side-effect persistence pattern
+  (store doesn't wrap localStorage internally, just touched at login/boot)
+- main.ts: useUserStore() + loadUser() called AFTER app.use(pinia)/app.use(router)
+  but BEFORE app.mount('#app') — avoids flash of logged-out state
+- stores/books.ts: fetchBooks() action sends Bearer ${userStore.access_token}
+  header via generated openapi-typescript client, assigns to store's own books ref
+- Router: /login, /books (new), /words, /prac all registered
+- Logout: clears Pinia state + localStorage, redirects to LoginView (no Google
+  disableAutoSelect call) — NOT YET IMPLEMENTED as an action, was only discussed
+
+DECIDED, NOT YET DONE
+- No refresh token (single 14-day access token, accepted tradeoff)
+- localStorage over httpOnly cookie (accepted XSS tradeoff, personal project)
+- logout() action not yet written
+
+WORKING STYLE
+Socratic, one problem at a time, concise. Kyosuke writes all code himself —
+don't provide code unless explicitly requested. Answer immediate question only.
+#+end_src
+
+*** To Dos
+**** backlog
+- <done>add alerts \to toast
+- add/edit/delete word
+- add/edit/delete book
+- import books and words
+
+**** bug
+- words of learning are reset to new after quit/restart practice
+

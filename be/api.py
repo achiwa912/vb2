@@ -265,11 +265,10 @@ def sync_book(path: BookPath, body: SyncBookReq):
                 ):
                     dw_last_practiced = cp.last_practiced
         else:
-            # sp = db.session.execute(
-            #     select(Practice).where(Practice.id == cp.id)
-            # ).scalar_one()
             print(f"+++ {cp.last_edited} vs {sp.last_edited}")
-            if cp.last_edited > sp.last_edited:
+            if cp.last_edited > sp.last_edited or (
+                cp.status == "learning" and sp.status == "new"
+            ):
                 # sp.direction=cp.direction
                 sp.last_practiced = cp.last_practiced
                 sp.last_edited = cp.last_edited

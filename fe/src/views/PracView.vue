@@ -14,8 +14,6 @@ const booksStore = useBooksStore()
 const isFlipped = ref<boolean>(false)
 const lw = ref<number[]>([])  // learning window
 const ww = ref<number[]>([])  // waiting window
-const wordsNoPrac = ref<number[]>([])
-const lastSyncTime = ref<Date | null>(null)
 const pracIdx = ref<number | null>(null) // the one currently practicing
 const voices = ref<SpeechSynthesisVoice[]>([]) // for TTS
 
@@ -38,52 +36,7 @@ const infoWithin3 = computed(() => {
 
 const flipCard = () => { isFlipped.value = !isFlipped.value }
 
-function isNextDayOrLater(referenceDate: Date, now: Date = new Date()): boolean {
-  if (referenceDate == null) return false
-  const startOfNextDay = new Date(referenceDate);
-  startOfNextDay.setHours(24, 0, 0, 0); // Rolls over to 00:00:00 of tomorrow
-  console.log(`Firing sync from isNextDayOrLater?: ${now >= startOfNextDay}`)
-  return now >= startOfNextDay;
-}
 
-
-async function syncServer() {
-  await booksStore.syncBook()
-
-  // create WordsNoPrac
-  let wnp = [...Array(booksStore.words.length).keys()]
-  for (const prac of booksStore.pracs) {
-    if (prac.direction == booksStore.pracDir) {
-      const ixDel = wnp.indexOf(booksStore.id2ixWord(prac.word_id))
-      if (ixDel !== -1) {
-	wnp.splice(ixDel, 1)
-      }
-    }
-  }
-  for (let i=wnp.length-1; i>0; i--) {
-    const j = Math.floor(Math.random() * (i+1));
-    [wnp[i], wnp[j]] = [wnp[j], wnp[i]]
-  }
-  wordsNoPrac.value = wnp
-
-  // decrement due_counters
-  if (booksStore.id2ixBook(booksStore.activeBookId) === null) return
-  if (booksStore.pracDir == 'wd') {
-    if (!isNextDayOrLater(
-      booksStore.books[booksStore.id2ixBook(booksStore.activeBookId)].wd_last_practiced
-    )) return
-  } else {
-    if (!isNextDayOrLater(
-      booksStore.books[booksStore.id2ixBook(booksStore.activeBookId)].dw_last_practiced
-    )) return
-  }
-  for (let prac of booksStore.pracs) {
-    if (booksStore.pracDir == prac.direction && prac.status == 'review') {
-      prac.due_counter = Math.max(prac.due_counter-1, 0)
-    }
-  }
-  lastSyncTime.value = new Date() // now
-}
 
 // ====== LW & WW ==========================================
 
@@ -122,6 +75,7 @@ function statusMove(status: string): boolean {
 }
 
 function fillWins() {
+  booksStore.createWordsNoPrac()
   while (lw.value.length > LWSIZE) {
     let p = lw.value.pop()  // from tail
     ww.value.unshift(p) // to head
@@ -149,6 +103,7 @@ function fillWins() {
       booksStore.pracs[pix].status = 'learning'
     }
     lw.value.push(pix)  // to tail
+    booksStore.createWordsNoPrac()  // may not be needed
   }
 
   // status == learning -> waiting -> new
@@ -157,8 +112,8 @@ function fillWins() {
   if (statusMove('new')) return
 
   // words without practice
-  const wnp = [...wordsNoPrac.value]
-  for (let wix of wordsNoPrac.value) {
+  const wnp = [...booksStore.wordsNoPrac]
+  for (let wix of booksStore.wordsNoPrac) {
     const p: PracticeSchema = {
       direction: booksStore.pracDir,
       due_counter: null,
@@ -188,14 +143,14 @@ function fillWins() {
     }
     if (lw.value.length == LWSIZE && ww.value.length == WWSIZE) return
   }
-  wordsNoPrac.value = [...wnp]
+  booksStore.wordsNoPrac = [...wnp]
 }
 
 // ====== practice =========================================
 
 async function doPrac() {
-  if (isNextDayOrLater(lastSyncTime.value)) {
-    await syncServer()
+  if (booksStore.isNextDayOrLater(booksStore.lastSyncTime)) {
+    await booksStore.syncServer()
   }
   fillWins()
   if (lw.value.length == 0) {
@@ -316,7 +271,7 @@ const speakTts = (txt: string) => {
 }
 
 onBeforeRouteLeave(async () => {
-  await syncServer()
+  await booksStore.syncServer()
 })
 
 onMounted(async () => {
@@ -327,7 +282,7 @@ onMounted(async () => {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = loadVoices
   }
-  await syncServer()
+  await booksStore.syncServer()
   doPrac()
 })
 
@@ -335,7 +290,7 @@ onMounted(async () => {
 
 <template>
   <Navbar>
-    <li><div @click="syncServer"><RefreshCw />Sync</div></li>
+    <li><div @click="booksStore.syncServer"><RefreshCw />Sync</div></li>
     <div class="divider my-1"></div>
   </Navbar>
   
@@ -440,5 +395,5 @@ onMounted(async () => {
   </div>
   <p>LW: {{ lw }}</p>
   <p>WW: {{ ww }}</p>
-  <p>wordsNoPrac: {{ wordsNoPrac }}</p>
+  <p>wordsNoPrac: {{ booksStore.wordsNoPrac }}</p>
 </template>

@@ -17,6 +17,8 @@ export const useBooksStore = defineStore('books', () => {
   const pracs = ref<PracticeSchema[]>([])
   const activeBookId = ref<number | null>(1)  // ++++ to (null)
   const pracDir = ref<PracDir | null>("dw")  // ++++ to (null)
+  const wordsNoPrac = ref<number[]>([])
+  const lastSyncTime = ref<Date | null>(null)
 
   const userStore = useUserStore()
   
@@ -60,27 +62,27 @@ export const useBooksStore = defineStore('books', () => {
     pracs.value = data.practices
   }
 
-  async function addWord(word: WordSchema): Promise<boolean> {
+  async function addWord(word: string, definition: string, sample: string, book_id: number): Promise<boolean> {
     if (!word) return false
     const { data, error } = await client.POST('/books/{id}/words', {
       headers: { 'Authorization': `Bearer ${userStore.access_token}`},
-      params: { path: { id: word.book_id } },
-      body: { word: word.word, definition: word.definition, sample: word.sample },
+      params: { path: { id: book_id } },
+      body: { word: word, definition: definition, sample: sample },
     })
     if (error) return false
     words.value.push(data.word)
     return true
   }
 
-  async function editWord(word: WordSchema): Promise<boolean> {
+  async function editWord(word: string, definition: string, sample: string, book_id: number, word_id: number): Promise<boolean> {
     if (!word) return false
     const { data, error } = await client.PATCH('/books/{bid}/words/{wid}', {
       headers: { 'Authorization': `Bearer ${userStore.access_token}`},
-      params: { path: { bid: word.book_id, wid: word.id } },
-      body: { word: word.word, definition: word.definition, sample: word.sample },
+      params: { path: { bid: book_id, wid: word_id } },
+      body: { word: word, definition: definition, sample: sample },
     })
     if (error) return false
-    const wix: number | null = id2ixWord(word.id)
+    const wix: number | null = id2ixWord(word_id)
     if (wix === null) return false
     words.value[wix] = data.word
     return true
@@ -106,12 +108,61 @@ export const useBooksStore = defineStore('books', () => {
     return null
   }
 
-  function id2ixBook(bid: number): number | null {
+  function id2ixBook(bid: number | null): number | null {
+    if (!bid) return null
     for (const [ix, b] of books.value.entries()) {
       if (b.id == bid) return ix
     }
     return null
   }
+
+  function isNextDayOrLater(referenceDate: Date | null, now: Date = new Date()): boolean {
+    if (referenceDate == null) return false
+    const startOfNextDay = new Date(referenceDate);
+    startOfNextDay.setHours(24, 0, 0, 0); // Rolls over to 00:00:00 of tomorrow
+    console.log(`Firing sync from isNextDayOrLater?: ${now >= startOfNextDay}`)
+    return now >= startOfNextDay;
+  }
   
-  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook }
+  function createWordsNoPrac() {
+    let wnp: number[] = [...Array(words.value.length).keys()]
+    for (const prac of pracs.value) {
+      if (prac.direction == pracDir.value) {
+	const ixDel = wnp.indexOf(id2ixWord(prac.word_id) ?? -1)
+	if (ixDel !== -1) {
+	  wnp.splice(ixDel, 1)
+	}
+      }
+    }
+    for (let i=wnp.length-1; i>0; i--) {
+      const j = Math.floor(Math.random() * (i+1));
+      [wnp[i]!, wnp[j]!] = [wnp[j]!, wnp[i]!]
+    }
+    wordsNoPrac.value = wnp
+  }
+
+  async function syncServer() {
+    await syncBook()
+
+    createWordsNoPrac()
+    lastSyncTime.value = new Date() // now
+
+    // decrement due_counters
+    const bookIndex = id2ixBook(activeBookId.value)
+    if (bookIndex === null) return
+    if (pracDir.value == 'wd') {
+      const lastp = books.value[bookIndex]?.wd_last_practiced
+      if (!isNextDayOrLater(lastp ? new Date(lastp) : null)) return
+    } else {
+      const lastp = books.value[bookIndex]?.dw_last_practiced
+      if (!isNextDayOrLater(lastp ? new Date(lastp) : null)) return
+    }
+    for (let prac of pracs.value) {
+      if (pracDir.value == prac.direction && prac.status == 'review') {
+	prac.due_counter = Math.max((prac.due_counter ?? 0)-1, 0)
+      }
+    }
+  }
+  
+  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer }
 })

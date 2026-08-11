@@ -6,7 +6,11 @@ const router = useRouter()
 const route = useRoute()
 const booksStore = useBooksStore()
 
-function goHome() {
+async function goHome() {
+  console.log(route.path)
+  if (route.path == '/prac') {
+    await booksStore.syncServer()
+  }
   booksStore.activeBookId = null
   router.push('/')
 }
