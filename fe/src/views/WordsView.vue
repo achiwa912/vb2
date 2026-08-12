@@ -45,16 +45,18 @@ const closeModal = () => {
 
 const updateWord = async () => {
   if (selectedWord.value){
-    if (await booksStore.editWord(editWord.value, editDef.value, editSample.value, selectedWord.value.book_id, selectedWord.value.id)) {
+    const resp = await booksStore.editWord(editWord.value, editDef.value, editSample.value, selectedWord.value.book_id, selectedWord.value.id)
+    if (resp.status == 200) {
       toastRef.value?.showAlert(`Updated word: ${editWord.value} (id: ${selectedWord.value.id})`, 'success')
     } else {
-      toastRef.value?.showAlert(`Failed updating word: ${selectedWord.value.word} (id: ${selectedWord.value.id})`, 'error')
+      toastRef.value?.showAlert(`Failed updating word: ${selectedWord.value.word}. ${resp.message} (${resp.status})`, 'error')
     }
   } else {
-    if (await booksStore.addWord(editWord.value, editDef.value, editSample.value, booksStore.activeBookId)) {
+    const resp = await booksStore.addWord(editWord.value, editDef.value, editSample.value, booksStore.activeBookId)
+    if (resp.status == 200) {
       toastRef.value?.showAlert(`Added word: ${editWord.value}`, 'success')
     } else {
-      toastRef.value?.showAlert(`Failed to add word: ${editWord.value}`, 'error')
+      toastRef.value?.showAlert(`Failed to add word: ${editWord.value}. ${resp.message} (${resp.status})`, 'error')
     }
   }
   closeModal()
@@ -62,10 +64,11 @@ const updateWord = async () => {
 }
 
 const deleteWord = async () => {
-  if (await booksStore.deleteWord(selectedWord.value)) {
+  const resp = await booksStore.deleteWord(selectedWord.value)
+  if (resp.status == 200) {
     toastRef.value?.showAlert(`Deleted word: ${selectedWord.value.word} (id: ${selectedWord.value.id})`, 'success')
   } else {
-    toastRef.value?.showAlert(`Failed to delete word: ${selectedWord.value.word} (id: ${selectedWord.value.id})`, 'error')
+    toastRef.value?.showAlert(`Failed to delete word: ${selectedWord.value.word}. ${resp.message} (${resp.status})`, 'error')
   }
   closeModal()
   await booksStore.fetchWords()
@@ -142,101 +145,101 @@ onMounted(async () => {
   </div>
 
   <!-- word add/edit modal -->
-<dialog ref="modalRef" class="modal modal-bottom sm:modal-middle backdrop:backdrop-blur-sm transition-all duration-300">
-  <div class="modal-box p-6 max-w-lg rounded-2xl border border-base-200/60 shadow-xl bg-base-100/95 backdrop-blur-md">
+  <dialog ref="modalRef" class="modal modal-bottom sm:modal-middle backdrop:backdrop-blur-sm transition-all duration-300">
+    <div class="modal-box p-6 max-w-lg rounded-2xl border border-base-200/60 shadow-xl bg-base-100/95 backdrop-blur-md">
     
-    <!-- Header with Close Button -->
-    <div class="flex items-center justify-between pb-4 mb-6 border-b border-base-200">
-      <div>
-        <h3 class="text-xl font-bold tracking-tight text-base-content">
-          {{ isNew ? 'Add New Word' : 'Edit Word' }}
-        </h3>
-        <p class="text-xs text-base-content/60 mt-0.5">
-          {{ isNew ? 'Add a new entry to your dictionary.' : 'Make changes to your existing word.' }}
-        </p>
+      <!-- Header with Close Button -->
+      <div class="flex items-center justify-between pb-4 mb-6 border-b border-base-200">
+	<div>
+          <h3 class="text-xl font-bold tracking-tight text-base-content">
+            {{ isNew ? 'Add New Word' : 'Edit Word' }}
+          </h3>
+          <p class="text-xs text-base-content/60 mt-0.5">
+            {{ isNew ? 'Add a new entry to your dictionary.' : 'Make changes to your existing word.' }}
+          </p>
+	</div>
+	<button 
+          type="button" 
+          class="btn btn-sm btn-circle btn-ghost text-base-content/50 hover:text-base-content" 
+          @click="closeModal"
+          aria-label="Close modal"
+	>
+          ✕
+	</button>
       </div>
-      <button 
-        type="button" 
-        class="btn btn-sm btn-circle btn-ghost text-base-content/50 hover:text-base-content" 
-        @click="closeModal"
-        aria-label="Close modal"
-      >
-        ✕
-      </button>
+
+      <!-- Form Fields -->
+      <form @submit.prevent="updateWord" class="space-y-4">
+	<!-- Word Input -->
+	<div class="form-control w-full">
+          <label class="label py-1">
+            <span class="label-text font-medium text-xs uppercase tracking-wider text-base-content/70">Word</span>
+          </label>
+          <input 
+            v-model="editWord" 
+            type="text" 
+            placeholder="e.g. Serendipity" 
+            class="input input-bordered w-full rounded-xl focus:input-primary transition-all duration-200" 
+            required 
+          />
+	</div>
+
+	<!-- Definition Input -->
+	<div class="form-control w-full">
+          <label class="label py-1">
+            <span class="label-text font-medium text-xs uppercase tracking-wider text-base-content/70">Definition</span>
+          </label>
+          <textarea 
+            v-model="editDef" 
+            placeholder="e.g. The occurrence of events by chance in a happy way." 
+            class="textarea textarea-bordered w-full h-20 rounded-xl focus:textarea-primary transition-all duration-200 resize-none" 
+            required
+          ></textarea>
+	</div>
+      
+	<!-- Sample Sentence Input -->
+	<div class="form-control w-full">
+          <label class="label py-1">
+            <span class="label-text font-medium text-xs uppercase tracking-wider text-base-content/70">Sample Sentence</span>
+          </label>
+          <input 
+            v-model="editSample" 
+            type="text" 
+            placeholder="e.g. Finding that cozy cafe was pure serendipity." 
+            class="input input-bordered w-full rounded-xl focus:input-primary transition-all duration-200" 
+          />
+	</div>
+	
+	<!-- Action Footer -->
+	<div class="pt-4 mt-6 border-t border-base-200 flex items-center justify-between gap-3">
+          <!-- Delete action on the left to prevent accidental clicks -->
+          <div>
+            <button 
+              v-if="!isNew" 
+              type="button" 
+              class="btn btn-error btn-ghost text-error hover:bg-error/10 rounded-xl transition-colors" 
+              @click="deleteWord"
+            >
+              Delete
+            </button>
+          </div>
+	  
+          <div class="flex items-center gap-2">
+            <button type="button" class="btn btn-ghost rounded-xl" @click="closeModal">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary rounded-xl px-6">
+              {{ isNew ? 'Create' : 'Save Changes' }}
+            </button>
+          </div>
+	</div>
+      </form>
+      
     </div>
-
-    <!-- Form Fields -->
-    <form @submit.prevent="updateWord" class="space-y-4">
-      <!-- Word Input -->
-      <div class="form-control w-full">
-        <label class="label py-1">
-          <span class="label-text font-medium text-xs uppercase tracking-wider text-base-content/70">Word</span>
-        </label>
-        <input 
-          v-model="editWord" 
-          type="text" 
-          placeholder="e.g. Serendipity" 
-          class="input input-bordered w-full rounded-xl focus:input-primary transition-all duration-200" 
-          required 
-        />
-      </div>
-
-      <!-- Definition Input -->
-      <div class="form-control w-full">
-        <label class="label py-1">
-          <span class="label-text font-medium text-xs uppercase tracking-wider text-base-content/70">Definition</span>
-        </label>
-        <textarea 
-          v-model="editDef" 
-          placeholder="e.g. The occurrence of events by chance in a happy way." 
-          class="textarea textarea-bordered w-full h-20 rounded-xl focus:textarea-primary transition-all duration-200 resize-none" 
-          required
-        ></textarea>
-      </div>
-
-      <!-- Sample Sentence Input -->
-      <div class="form-control w-full">
-        <label class="label py-1">
-          <span class="label-text font-medium text-xs uppercase tracking-wider text-base-content/70">Sample Sentence</span>
-        </label>
-        <input 
-          v-model="editSample" 
-          type="text" 
-          placeholder="e.g. Finding that cozy cafe was pure serendipity." 
-          class="input input-bordered w-full rounded-xl focus:input-primary transition-all duration-200" 
-        />
-      </div>
-
-      <!-- Action Footer -->
-      <div class="pt-4 mt-6 border-t border-base-200 flex items-center justify-between gap-3">
-        <!-- Delete action on the left to prevent accidental clicks -->
-        <div>
-          <button 
-            v-if="!isNew" 
-            type="button" 
-            class="btn btn-error btn-ghost text-error hover:bg-error/10 rounded-xl transition-colors" 
-            @click="deleteWord"
-          >
-            Delete
-          </button>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button type="button" class="btn btn-ghost rounded-xl" @click="closeModal">
-            Cancel
-          </button>
-          <button type="submit" class="btn btn-primary rounded-xl px-6">
-            {{ isNew ? 'Create' : 'Save Changes' }}
-          </button>
-        </div>
-      </div>
+    
+    <!-- Backdrop click to close trigger -->
+    <form method="dialog" class="modal-backdrop">
+      <button @click="closeModal">close</button>
     </form>
-
-  </div>
-
-  <!-- Backdrop click to close trigger -->
-  <form method="dialog" class="modal-backdrop">
-    <button @click="closeModal">close</button>
-  </form>
-</dialog>  
+  </dialog>  
 </template>

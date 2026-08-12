@@ -114,11 +114,8 @@ export interface components {
             dw_last_practiced: string | null;
             /** Id */
             id: number;
-            /**
-             * Last Edited
-             * Format: date-time
-             */
-            last_edited: string;
+            /** Last Edited */
+            last_edited: string | null;
             /** Name */
             name: string;
             /** User Id */
@@ -168,6 +165,11 @@ export interface components {
         ListWordsResp: {
             /** Words */
             words: components["schemas"]["WordSchema"][];
+        };
+        /** MessageResp */
+        MessageResp: {
+            /** Message */
+            message: string;
         };
         /** PatchBookReq */
         PatchBookReq: {
@@ -339,6 +341,15 @@ export interface operations {
                     "application/json": components["schemas"]["GglAuthResp"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -431,6 +442,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -467,6 +487,15 @@ export interface operations {
                     "application/json": components["schemas"]["WordResp"];
                 };
             };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -495,6 +524,24 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
             };
             /** @description Unprocessable Content */
             422: {
@@ -531,6 +578,24 @@ export interface operations {
                     "application/json": components["schemas"]["BookResp"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -560,6 +625,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListWordsResp"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
                 };
             };
             /** @description Unprocessable Content */
@@ -597,6 +671,15 @@ export interface operations {
                     "application/json": components["schemas"]["WordResp"];
                 };
             };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -630,6 +713,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SyncBookResp"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
                 };
             };
             /** @description Unprocessable Content */

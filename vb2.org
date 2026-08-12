@@ -708,21 +708,6 @@ Socratic, one problem at a time, concise. Kyosuke writes all code himself —
 don't provide code unless explicitly requested. Answer immediate question only.
 #+end_src
 
-*** To Dos
-**** backlog
-- <done>add alerts \to toast
-- <done>add/edit/delete word
-- <done>logout
-- <done>JWT expiration
-  - Should call userStore.unsetUser() and redirect to /login page
-  - Before calling /login, need to capture where you are
-- <done> modernize login view
-- add/edit/delete book
-- import books and words
-
-**** bug
-- <fixed>words of learning are reset to new after quit/restart practice
-- <fixed>can't login
 
 *** Import problem
 **** Problem
@@ -749,3 +734,50 @@ const authMiddleware: Middleware = {
 }
 #+end_src
 
+*** Adding modal
+- define modal ref
+#+begin_src js
+const modalRef = ref(null)
+#+end_src
+- define open&close modal functions
+#+begin_src js
+const openModal = () => {
+  modalRef.value?.showModal()
+}
+
+const closeModal = () => {
+  modalRef.calue?.close()
+}
+#+end_src
+- add button, etc. to html
+#+begin_src html
+<button @click="openModal" class="btn btn-secondary btn-outline btn-sm rounded-3xl ml-4">Add something</button>
+#+end_src
+- add dialog(modal) in html
+#+begin_src html
+<dialog ref='modalRef' class='modal modal-bottom sm:modal-middle backdrop:backdrop-blur-sm transition-all duration-300'>
+  <div class='modal-box p-6 max-w-lg rounded-2xl border border-base-200/60 shadow-xl bg-base-100/95 backdrop-blur-md'>
+    <!-- Contents here -->
+  </div>
+  <form method='dialog' class='modal-backdrop'>
+    <button @click='closeModal'>close</button>
+  </form>
+</dialog>
+#+end_src
+
+*** To Dos
+**** backlog
+- <done>add alerts \to toast
+- <done>add/edit/delete word
+- <done>logout
+- <done>JWT expiration
+  - Should call userStore.unsetUser() and redirect to /login page
+  - Before calling /login, need to capture where you are
+- <done> modernize login view
+- <done> add/edit/delete book
+- Show username in navbar
+- import books and words
+
+**** bug
+- <fixed>words of learning are reset to new after quit/restart practice
+- <fixed>can't login

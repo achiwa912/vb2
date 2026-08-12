@@ -36,6 +36,7 @@ from .schemas import (
     BookSchema,
     WordSchema,
     PracticeSchema,
+    MessageResp,
 )
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -57,8 +58,8 @@ if __name__ == "__main__":
         db.create_all()
 
 
-@app.post("/auth/ggl", responses={200: GglAuthResp})
-def auth_ggl(body: GglAuthReq) -> dict[str, GglAuthResp]:
+@app.post("/auth/ggl", responses={200: GglAuthResp, 401: MessageResp})
+def auth_ggl(body: GglAuthReq) -> tuple[dict[str, str], int]:
     try:
         id_info = id_token.verify_oauth2_token(
             body.token, requests.Request(), os.getenv("GGL_CLIENT_ID")
@@ -75,14 +76,17 @@ def auth_ggl(body: GglAuthReq) -> dict[str, GglAuthResp]:
         db.session.add(user)
         db.session.commit()
     atoken = create_access_token(identity=str(user.id))
-    return GglAuthResp.model_validate(
-        {
-            "user_id": user.id,
-            "access_token": atoken,
-            "email": user.email,
-            "name": user.name,
-        }
-    ).model_dump(mode="json")
+    return (
+        GglAuthResp.model_validate(
+            {
+                "user_id": user.id,
+                "access_token": atoken,
+                "email": user.email,
+                "name": user.name,
+            }
+        ).model_dump(mode="json"),
+        200,
+    )
 
 
 @app.get("/books", responses={200: ListBooksResp})
@@ -92,19 +96,12 @@ def list_books() -> dict[str, ListBooksResp]:
     books = (
         db.session.execute(select(Book).where(Book.user_id == user_id)).scalars().all()
     )
-    # lbr = ListBooksResp.model_validate({"books": books})
-    # for b in lbr.books:
-    #     b.last_edited = b.last_edited.replace(tzinfo=timezone.utc)
-    #     if b.wd_last_practiced:
-    #         b.wd_last_practiced = b.wd_last_practiced.replace(tzinfo=timezone.utc)
-    #     if b.dw_last_practiced:
-    #         b.dw_last_practiced = b.dw_last_practiced.replace(tzinfo=timezone.utc)
     return ListBooksResp.model_validate({"books": books}).model_dump(mode="json")
 
 
-@app.post("/books/<int:id>/words", responses={200: WordResp})
+@app.post("/books/<int:id>/words", responses={200: WordResp, 404: MessageResp})
 @jwt_required()
-def create_word(path: BookPath, body: CreateWordReq) -> dict[str, WordResp]:
+def create_word(path: BookPath, body: CreateWordReq) -> tuple[dict[str, str], int]:
     user_id = int(get_jwt_identity())
     b = db.session.execute(
         select(Book).where(Book.id == path.id, Book.user_id == user_id)
@@ -116,12 +113,14 @@ def create_word(path: BookPath, body: CreateWordReq) -> dict[str, WordResp]:
     )
     db.session.add(w)
     db.session.commit()
-    return WordResp.model_validate({"word": w}).model_dump(mode="json")
+    return WordResp.model_validate({"word": w}).model_dump(mode="json"), 200
 
 
-@app.patch("/books/<int:bid>/words/<int:wid>", responses={200: WordResp})
+@app.patch(
+    "/books/<int:bid>/words/<int:wid>", responses={200: WordResp, 404: MessageResp}
+)
 @jwt_required()
-def edit_word(path: WordPath, body: PatchWordReq) -> dict[str, WordResp]:
+def edit_word(path: WordPath, body: PatchWordReq) -> tuple[dict[str, str], int]:
     user_id = int(get_jwt_identity())
     w = db.session.execute(
         select(Word)
@@ -138,12 +137,12 @@ def edit_word(path: WordPath, body: PatchWordReq) -> dict[str, WordResp]:
         w.sample = body.sample
     w.last_edited = datetime.now(timezone.utc)
     db.session.commit()
-    return WordResp.model_validate({"word": w}).model_dump(mode="json")
+    return WordResp.model_validate({"word": w}).model_dump(mode="json"), 200
 
 
-@app.delete("/books/<int:bid>/words/<int:wid>", responses={200: None})
+@app.delete("/books/<int:bid>/words/<int:wid>", responses={200: None, 404: MessageResp})
 @jwt_required()
-def delete_word(path: WordPath):
+def delete_word(path: WordPath) -> tuple[dict[str, str], int]:
     user_id = int(get_jwt_identity())
     w = db.session.execute(
         select(Word)
@@ -168,9 +167,11 @@ def create_book(body: CreateBookReq) -> dict[str, BookResp]:
     return BookResp.model_validate({"book": b}).model_dump(mode="json")
 
 
-@app.patch("/books/<int:id>", responses={200: BookResp})
+@app.patch(
+    "/books/<int:id>", responses={200: BookResp, 400: MessageResp, 404: MessageResp}
+)
 @jwt_required()
-def edit_book(path: BookPath, body: PatchBookReq) -> dict[str, BookResp]:
+def edit_book(path: BookPath, body: PatchBookReq) -> tuple[dict[str, str], int]:
     if not body.name:
         return {"message": "Invalid book name"}, 400
     user_id = int(get_jwt_identity())
@@ -182,10 +183,12 @@ def edit_book(path: BookPath, body: PatchBookReq) -> dict[str, BookResp]:
     b.name = body.name
     b.last_edited = datetime.now(timezone.utc)
     db.session.commit()
-    return BookResp.model_validate({"book": b}).model_dump(mode="json")
+    return BookResp.model_validate({"book": b}).model_dump(mode="json"), 200
 
 
-@app.delete("/books/<int:id>", responses={200: None})
+@app.delete(
+    "/books/<int:id>", responses={200: None, 400: MessageResp, 404: MessageResp}
+)
 @jwt_required()
 def delete_book(path: BookPath):
     user_id = int(get_jwt_identity())
@@ -203,9 +206,9 @@ def delete_book(path: BookPath):
     return {"message": f"Deleted book id={path.id}"}, 200
 
 
-@app.get("/books/<int:id>/words", responses={200: ListWordsResp})
+@app.get("/books/<int:id>/words", responses={200: ListWordsResp, 404: MessageResp})
 @jwt_required()
-def list_book_words(path: BookPath) -> dict[str, ListWordsResp]:
+def list_book_words(path: BookPath) -> tuple[dict[str, str], int]:
     user_id = int(get_jwt_identity())
     book = db.session.execute(
         select(Book).where(Book.user_id == user_id, Book.id == path.id)
@@ -215,12 +218,12 @@ def list_book_words(path: BookPath) -> dict[str, ListWordsResp]:
     words = (
         db.session.execute(select(Word).where(Word.book_id == path.id)).scalars().all()
     )
-    return ListWordsResp.model_validate({"words": words}).model_dump(mode="json")
+    return ListWordsResp.model_validate({"words": words}).model_dump(mode="json"), 200
 
 
-@app.post("/sync/<int:id>", responses={200: SyncBookResp})
+@app.post("/sync/<int:id>", responses={200: SyncBookResp, 404: MessageResp})
 @jwt_required()
-def sync_book(path: BookPath, body: SyncBookReq):
+def sync_book(path: BookPath, body: SyncBookReq) -> tuple[dict[str, str], int]:
     user_id = int(get_jwt_identity())
     book = db.session.execute(
         select(Book).where(Book.user_id == user_id, Book.id == path.id)
@@ -312,6 +315,7 @@ def sync_book(path: BookPath, body: SyncBookReq):
     words = [WordSchema.model_validate(w) for w in words]
     practices = [PracticeSchema.model_validate(p) for p in practices]
 
-    return SyncBookResp(book=b, words=words, practices=practices).model_dump(
-        mode="json"
+    return (
+        SyncBookResp(book=b, words=words, practices=practices).model_dump(mode="json"),
+        200,
     )

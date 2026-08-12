@@ -123,3 +123,7 @@ class SyncBookResp(BaseModel):
     book: BookSchema
     words: list[WordSchema]
     practices: list[PracticeSchema]
+
+
+class MessageResp(BaseModel):
+    message: str

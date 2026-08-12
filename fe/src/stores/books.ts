@@ -61,44 +61,112 @@ export const useBooksStore = defineStore('books', () => {
     words.value = data.words
     pracs.value = data.practices
   }
+  
+  async function addBook(bookName: string): Promise<{ status: number, message: string }> {
+    if (!bookName) return { status: 404, message: "Book not found" }
+    const { data, error } = await client.POST('/books', {
+      headers: { 'Authorization': `Bearer ${userStore.access_token}`},
+      body: { name: bookName },
+    })
+    if (error) return { status: 404, message: "Book not found" }
+    books.value.push(data.book)
+    return { status: 200, message: "Added book"}
+  }
 
-  async function addWord(word: string, definition: string, sample: string, book_id: number): Promise<boolean> {
-    if (!word) return false
-    const { data, error } = await client.POST('/books/{id}/words', {
+  async function editBook(bookName: string, book_id: number): Promise<{ status: number, message: string}> {
+    if (!bookName) return { status: 404, message: "Book not found" }
+    const { data, error, response } = await client.PATCH('/books/{id}', {
+      headers: { 'Authorization': `Bearer ${userStore.access_token}`},
+      params: { path: { id: book_id }},
+      body: { name: bookName },
+    })
+    if (error) {
+      if ('message' in error) {
+	return { status: response.status, message: error.message }
+      } else {
+	return { status: response.status, message: "?(unhandled)"}
+      }
+    }
+    const bix: number | null = id2ixBook(book_id)
+    if (bix === null) return { status: 404, message: "Book not found" }
+    books.value[bix] = data.book
+    return { status: 200, message: "Updated book"}
+  }
+
+  async function deleteBook(book: BookSchema): Promise<{ status: number, message: string }> {
+    if (!book) return { status: 404, message: "Book not found" }
+    const { error, response } = await client.DELETE('/books/{id}', {
+      headers: { 'Authorization': `Bearer ${userStore.access_token}`},
+      params: { path: { id: book.id }},
+    })
+    if (error) {
+      if ('message' in error) {
+	return { status: response.status, message: error.message }
+      } else {
+	return { status: response.status, message: "?(unhandled)"}
+      }
+    }
+    const bix: number | null = id2ixBook(book.id)
+    if (bix === null) return { status: 404, message: "Book not found" }
+    books.value.splice(bix, 1)
+  return { status: 200, message: "Deleted book" }
+  }
+  
+  async function addWord(word: string, definition: string, sample: string, book_id: number): Promise<{ status: number, message: string }> {
+    if (!word) return { status: 404, message: "Word not found" }
+    const { data, error, response } = await client.POST('/books/{id}/words', {
       headers: { 'Authorization': `Bearer ${userStore.access_token}`},
       params: { path: { id: book_id } },
       body: { word: word, definition: definition, sample: sample },
     })
-    if (error) return false
+    if (error) {
+      if ('message' in error) {
+	return { status: response.status, message: error.message }
+      } else {
+	return { status: response.status, message: "?(unhandled)"}
+      }
+    }
     words.value.push(data.word)
-    return true
+    return { status: 200, message: "Added word"}
   }
 
-  async function editWord(word: string, definition: string, sample: string, book_id: number, word_id: number): Promise<boolean> {
-    if (!word) return false
-    const { data, error } = await client.PATCH('/books/{bid}/words/{wid}', {
+  async function editWord(word: string, definition: string, sample: string, book_id: number, word_id: number): Promise<{ status: number, message: string}> {
+    if (!word) return { status: 404, message: "Word not found" }
+    const { data, error, response } = await client.PATCH('/books/{bid}/words/{wid}', {
       headers: { 'Authorization': `Bearer ${userStore.access_token}`},
       params: { path: { bid: book_id, wid: word_id } },
       body: { word: word, definition: definition, sample: sample },
     })
-    if (error) return false
+    if (error) {
+      if ('message' in error) {
+	return { status: response.status, message: error.message }
+      } else {
+	return { status: response.status, message: "?(unhandled)"}
+      }
+    }
     const wix: number | null = id2ixWord(word_id)
-    if (wix === null) return false
+    if (wix === null) return { status: 404, message: "Word not found" }
     words.value[wix] = data.word
-    return true
+    return { status: 200, message: "Updated word"}
   }
 
-  async function deleteWord(word: WordSchema): Promise<boolean> {
-    if (!word) return false
-    const { error } = await client.DELETE('/books/{bid}/words/{wid}', {
+  async function deleteWord(word: WordSchema): Promise<{ status: number, message: string}> {
+    if (!word) return { status: 404, message: "Word not found" }
+    const { error, response } = await client.DELETE('/books/{bid}/words/{wid}', {
       headers: { 'Authorization': `Bearer ${userStore.access_token}`},
       params: { path: { bid: word.book_id, wid: word.id } },
     })
-    if (error) return false
+    if (error) {
+      if ('message' in error) {
+	return { status: response.status, message: error.message }
+      } else {
+	return { status: response.status, message: "?(unhandled)"}
+      }
+    }
     const wix: number | null = id2ixWord(word.id)
-    if (wix === null) return false
-    pracs.value.splice(wix, 1)
-    return true
+    if (wix === null) return { status: 404, message: "Word not found" }
+    words.value.splice(wix, 1)
+    return { status: 200, message: "Deleted word"}
   }
     
   function id2ixWord(wid: number): number | null {
@@ -164,5 +232,5 @@ export const useBooksStore = defineStore('books', () => {
     }
   }
   
-  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer }
+  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer }
 })
