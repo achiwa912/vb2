@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
 const booksStore = useBooksStore()
+const userStore = useUserStore()
+
+function logout() {
+  userStore.unsetUser()
+  router.push('/login')
+}
 
 async function goHome() {
   console.log(route.path)
@@ -19,10 +26,6 @@ function goWords() {
   router.push('/words')
 }
 
-// const logout = () => {
-//   authStore.logout()
-//   router.push('/login')
-// }
 </script>
 
 <template>

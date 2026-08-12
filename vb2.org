@@ -711,10 +711,41 @@ don't provide code unless explicitly requested. Answer immediate question only.
 *** To Dos
 **** backlog
 - <done>add alerts \to toast
-- add/edit/delete word
+- <done>add/edit/delete word
+- <done>logout
+- <done>JWT expiration
+  - Should call userStore.unsetUser() and redirect to /login page
+  - Before calling /login, need to capture where you are
+- <done> modernize login view
 - add/edit/delete book
 - import books and words
 
 **** bug
-- words of learning are reset to new after quit/restart practice
+- <fixed>words of learning are reset to new after quit/restart practice
+- <fixed>can't login
+
+*** Import problem
+**** Problem
+- main.ts
+  - import router from './router' runs router/index.ts
+    - import PracView runs it
+      - imports booksStore
+        - imports client.ts
+          - using useUserStore() here is problematic (pinia is not ready)
+  - app.use(createPinia())
+
+**** Fix
+- don't call useUserStore() at module scope -> should be in onResponse
+#+begin_src js
+const authMiddleware: Middleware = {
+  async onResponse({ response }) {
+    if (response.status === 401) {
+      const userStore = useUserStore()
+      userStore.unsetUser()
+      router.push({ path: '/login', query: { redirect: router.currentRoute.value.fullPath } })
+    }
+    return response
+  }
+}
+#+end_src
 

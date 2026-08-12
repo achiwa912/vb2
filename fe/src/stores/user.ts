@@ -18,6 +18,14 @@ export const useUserStore = defineStore('user', () => {
     localStorage.setItem('user', JSON.stringify(user))
   }
 
+  function unsetUser() {
+    user_id.value = null
+    email.value = null
+    name.value = null
+    access_token.value = null
+    localStorage.removeItem('user')
+  }
+  
   function loadUser() {
     const saved = localStorage.getItem('user')
     if (saved) {
@@ -29,5 +37,5 @@ export const useUserStore = defineStore('user', () => {
     }
   }
   
-  return { user_id, email, name, access_token, setUser, loadUser }
+  return { user_id, email, name, access_token, setUser, unsetUser, loadUser }
 })
