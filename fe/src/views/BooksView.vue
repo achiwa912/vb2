@@ -2,21 +2,26 @@
 import { ref, onMounted } from 'vue'
 import { useBooksStore } from '@/stores/books'
 import type { components } from '@/types/api'
-import { SquarePen } from '@lucide/vue'
+import { SquarePen, Download, Upload } from '@lucide/vue'
 import Navbar from '@/components/Navbar.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/utils'
+import { client } from '@/api/client'
+import { useUserStore } from '@/stores/user'
 
 type BookSchema = components['schemas']['BookSchema']
 
+
 const booksStore = useBooksStore()
+const userStore = useUserStore()
 const router = useRouter()
 const modalRef = ref(null)
 const toastRef = ref(null)
 const selectedBook = ref(null)
 const isNew = ref<boolean>(false)
 const bookName = ref<string>('')
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 function wordsView(bid) {
   booksStore.activeBookId = bid
@@ -62,7 +67,7 @@ const updateBook = async () => {
   await booksStore.fetchBooks()
 }
 
-const deleteBook = async() => {
+const deleteBook = async () => {
   const resp = await booksStore.deleteBook(selectedBook.value)
   if (resp.status == 200) {
     toastRef.value?.showAlert(`Deleted book: ${bookName.value}`, 'success')
@@ -70,6 +75,57 @@ const deleteBook = async() => {
     toastRef.value?.showAlert(`Failed to delete book: ${bookName.value}. ${resp.message} (${resp.status})`, 'error')
   }
   closeModal()
+  await booksStore.fetchBooks()
+}
+
+async function exportAll() {
+  const { data, error, response } = await client.GET('/export', {
+    headers: { 'Authorization': `Bearer ${userStore.access_token}`},
+  })
+  if (error) {
+    toastRef.value?.showAlert(`Export failed: ${error.message} (${response.status})`, 'error')
+    return
+  }
+  const jsonData = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonData], { type: 'application/json'})
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'vb_export.json'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+function triggerImport() {
+  fileInputRef.value?.click()
+}
+
+async function importAll(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  let data = null
+  try {
+    const rawText = await file.text()
+    data = JSON.parse(rawText)
+  } catch (err) {
+    toastRef.value?.showAlert(`Import failed: ${err}`, 'error')
+    // target.value = ''
+    return
+  } finally {
+    target.value = ''
+  }
+  const { error, response } = await client.POST('/import', {
+    headers: { 'Authorization': `Bearer ${userStore.access_token}`},
+    body: data,
+  })
+  if (error) {
+    toastRef.value?.showAlert(`Import failed: ${error.message} (${response.status})`, 'error')
+  } else {
+    toastRef.value?.showAlert(`Successfuly imported`, 'success')
+  }
   await booksStore.fetchBooks()
 }
 
@@ -83,6 +139,10 @@ onMounted(async () => {
 
 <template>
   <Navbar>
+    <input ref="fileInputRef" type="file" accept=".json,application/json" class="hidden-input" @change="importAll" />
+    <li><div @click="exportAll"><Download />Export All</div></li>
+    <li><div @click="triggerImport"><Upload />Import</div></li>
+    <div class="divider my-1"></div>
   </Navbar>
 
   <div class="p-6">
@@ -145,3 +205,10 @@ onMounted(async () => {
     </form>
   </dialog>
 </template>
+
+<style scoped>
+.hidden-input {
+  display: none
+}
+</style>
+

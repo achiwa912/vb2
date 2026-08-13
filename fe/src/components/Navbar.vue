@@ -62,12 +62,12 @@ function goWords() {
           >
             <!-- Optional Avatar -->
             <div class="w-8 h-8 bg-base-300 rounded-2xl flex items-center justify-center text-sm font-medium ring-2 ring-base-200">
-              t
+              {{ userStore.name[0] }}
             </div>
             
             <div class="text-left">
-              <p class="font-medium text-sm leading-none">testuser</p>
-              <p class="text-[10px] text-base-content/60 mt-0.5">Online</p>
+              <p class="font-medium text-sm leading-none">{{ userStore.name }}</p>
+              <p class="text-[10px] text-base-content/60 mt-0.5">{{ userStore.email }}</p>
             </div>
 
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">

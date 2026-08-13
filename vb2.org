@@ -765,6 +765,42 @@ const closeModal = () => {
 </dialog>
 #+end_src
 
+- context 8/12
+#+begin_src 
+VB2 SESSION HANDOFF
+
+DONE THIS SESSION
+- goHome sync-before-navigate bug fixed (activeBookId was nulled before syncServer ran)
+- syncServer/createWordsNoPrac/wordsNoPrac/lastSyncTime moved from PracView.vue into booksStore
+  (avoids <script setup> export error, shared between Navbar.vue and PracView)
+- fixed deleteWord bug: was pracs.value.splice(wix,...) instead of words.value.splice(wix,...)
+- logout implemented: userStore.unsetUser() (clears refs + localStorage.removeItem('user')),
+  then router.push('/login')
+- JWT 401 handling: client.ts authMiddleware (client.use) checks response.status===401,
+  calls useUserStore() INSIDE onResponse (not module scope - Pinia not installed yet at
+  client.ts's import time, since router/index.ts static-imports views -> stores -> client.ts,
+  all before app.use(createPinia()) in main.ts), then redirects to /login with
+  ?redirect=<current path>
+- post-login redirect: LoginView reads route.query.redirect, pushes there instead of
+  hardcoded '/books'
+- book CRUD UI done (add/edit/delete), backend + frontend, using {status, message} return
+  pattern from store actions (e.g. deleteBook) so views can alert specific error text
+- backend: added MessageResp schema ({message: str}) declared in responses={} dict for
+  edit_book/delete_book 400/404 so error.message types correctly on frontend (was falling
+  back to auto-generated 422 ValidationErrorModel[] type, which has no .message field)
+- pattern for endpoints with declared message-based errors: error is a union including the
+  422 shape; narrow with 'message' in error before accessing error.message (422 not handled,
+  no need to special-case beyond the narrowing)
+
+KNOWN NOISE (not fixed, not blocking)
+- @jwt_required() triggers reportAny in Emacs/pyright on every protected route (untyped
+  decorator in flask-jwt-extended stubs) - pre-existing, not worth chasing right now
+
+WORKING STYLE
+Socratic, one problem at a time, concise. Kyosuke writes all code himself - don't provide
+code unless explicitly requested. Answer immediate question only, no unsolicited follow-ups.
+#+end_src
+
 *** To Dos
 **** backlog
 - <done>add alerts \to toast
@@ -775,8 +811,10 @@ const closeModal = () => {
   - Before calling /login, need to capture where you are
 - <done> modernize login view
 - <done> add/edit/delete book
-- Show username in navbar
-- import books and words
+- <done> Show username in navbar
+- export/import all (books, words and pracs)
+- import words
+- Middleware injects authorization header
 
 **** bug
 - <fixed>words of learning are reset to new after quit/restart practice

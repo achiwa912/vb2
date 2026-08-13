@@ -1,5 +1,6 @@
 import os
 from datetime import UTC, timedelta, datetime, timezone
+from struct import iter_unpack
 from dotenv import load_dotenv
 from sqlalchemy.orm import selectinload
 
@@ -37,6 +38,7 @@ from .schemas import (
     WordSchema,
     PracticeSchema,
     MessageResp,
+    ExportResp,
 )
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -219,6 +221,133 @@ def list_book_words(path: BookPath) -> tuple[dict[str, str], int]:
         db.session.execute(select(Word).where(Word.book_id == path.id)).scalars().all()
     )
     return ListWordsResp.model_validate({"words": words}).model_dump(mode="json"), 200
+
+
+@app.post("/import", responses={200: None, 400: MessageResp})
+@jwt_required()
+def import_all(body: ExportResp):
+    user_id = int(get_jwt_identity())
+    bookid_map: dict[int, int] = {}
+    for ib in body.books:
+        sb = db.session.execute(
+            select(Book).where(Book.user_id == user_id, Book.name == ib.name)
+        ).scalar_one_or_none()
+        if sb:
+            bookid_map[ib.id] = sb.id
+            edited = ib.last_edited.astimezone(UTC).replace(tzinfo=None)
+            if sb.last_edited < edited:
+                sb.last_edited = edited
+            if ib.wd_last_practiced:
+                wd_practiced = ib.wd_last_practiced.astimezone(UTC).replace(tzinfo=None)
+                if not sb.wd_last_practiced or sb.wd_last_practiced < wd_practiced:
+                    sb.wd_last_practiced = wd_practiced
+            if ib.dw_last_practiced:
+                dw_practiced = ib.dw_last_practiced.astimezone(UTC).replace(tzinfo=None)
+                if not sb.dw_last_practiced or sb.dw_last_practiced < dw_practiced:
+                    sb.dw_last_practiced = dw_practiced
+        else:
+            b = Book(name=ib.name, user_id=user_id)
+            db.session.add(b)
+            b.last_edited = ib.last_edited.astimezone(UTC).replace(tzinfo=None)
+            if ib.dw_last_practiced:
+                b.dw_last_practiced = ib.dw_last_practiced.astimezone(UTC).replace(
+                    tzinfo=None
+                )
+            if ib.wd_last_practiced:
+                b.wd_last_practiced = ib.wd_last_practiced.astimezone(UTC).replace(
+                    tzinfo=None
+                )
+            db.session.commit()
+            bookid_map[ib.id] = b.id
+    # word_list = [w.word for w in body.words]
+    wordid_map: dict[int, int] = {}
+    for iw in body.words:
+        sw = db.session.execute(
+            select(Word).where(
+                Word.book_id == bookid_map[iw.book_id], Word.word == iw.word
+            )
+        ).scalar_one_or_none()
+        edited = iw.last_edited.astimezone(UTC).replace(tzinfo=None)
+        if sw:
+            wordid_map[iw.id] = sw.id
+            if sw.last_edited < edited:
+                sw.last_edited = edited
+                sw.definition = iw.definition
+                if iw.sample:
+                    sw.sample = iw.sample
+        else:
+            w = Word(
+                word=iw.word,
+                definition=iw.definition,
+                sample=iw.sample if iw.sample else "",
+                book_id=bookid_map[iw.book_id],
+            )
+            db.session.add(w)
+            w.last_edited = edited
+            db.session.commit()
+            wordid_map[iw.id] = w.id
+    for ip in body.practices:
+        sp = db.session.execute(
+            select(Practice).where(
+                Practice.word_id == wordid_map[ip.word_id],
+                Practice.direction == ip.direction,
+            )
+        ).scalar_one_or_none()
+        edited = ip.last_edited.astimezone(UTC).replace(tzinfo=None)
+        practiced = None
+        if ip.last_practiced:
+            practiced = ip.last_practiced.astimezone(UTC).replace(tzinfo=None)
+        if sp:
+            if sp.last_edited < edited:
+                sp.last_edited = edited
+            if practiced and (not sp.last_practiced or sp.last_practiced < practiced):
+                sp.last_practiced = practiced
+                sp.due_dates = ip.due_dates
+                sp.due_counter = ip.due_counter
+                sp.status = ip.status
+        else:
+            p = Practice(
+                direction=ip.direction,
+                last_edited=edited,
+                user_id=user_id,
+                word_id=wordid_map[ip.word_id],
+                last_practiced=practiced,
+                due_dates=ip.due_dates,
+                due_counter=ip.due_counter,
+                status=ip.status,
+            )
+            db.session.add(p)
+    db.session.commit()
+    return "", 200
+
+
+@app.get("/export", responses={200: ExportResp, 404: MessageResp})
+@jwt_required()
+def export_all():
+    user_id = int(get_jwt_identity())
+    books = (
+        db.session.execute(select(Book).where(Book.user_id == user_id)).scalars().all()
+    )
+    if not books:
+        return {"message": "No books found"}, 404
+    book_ids = [b.id for b in books]
+    words = (
+        db.session.execute(select(Word).where(Word.book_id.in_(book_ids)))
+        .scalars()
+        .all()
+    )
+    if not words:
+        return {"message": "No words found"}, 404
+    word_ids = [w.id for w in words]
+    pracs = (
+        db.session.execute(select(Practice).where(Practice.word_id.in_(word_ids)))
+        .scalars()
+        .all()
+    )
+    exprt = ExportResp.model_validate(
+        {"books": books, "words": words, "practices": pracs}
+    )
+    return exprt.model_dump(mode="json"), 200
 
 
 @app.post("/sync/<int:id>", responses={200: SyncBookResp, 404: MessageResp})
