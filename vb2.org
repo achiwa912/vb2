@@ -812,7 +812,7 @@ code unless explicitly requested. Answer immediate question only, no unsolicited
 - <done> modernize login view
 - <done> add/edit/delete book
 - <done> Show username in navbar
-- export/import all (books, words and pracs)
+- <done> export/import all (books, words and pracs)
 - import words
 - Middleware injects authorization header
 

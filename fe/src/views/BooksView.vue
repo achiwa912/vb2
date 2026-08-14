@@ -145,6 +145,8 @@ onMounted(async () => {
     <div class="divider my-1"></div>
   </Navbar>
 
+  <ToastContainer ref="toastRef" />
+  
   <div class="p-6">
     <div class="flex gap-2 items-end">
       <h1 class="text-3xl font-semibold">Books</h1>
