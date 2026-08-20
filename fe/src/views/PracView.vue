@@ -16,29 +16,36 @@ const lw = ref<number[]>([])  // learning window
 const ww = ref<number[]>([])  // waiting window
 const pracIdx = ref<number | null>(null) // the one currently practicing
 const voices = ref<SpeechSynthesisVoice[]>([]) // for TTS
-
-const infoLearning = computed(() => {
-  return booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && ['learning', 'waiting'].includes(prac.status))).length || 0
-})
+const infoMem = ref<number>(0)
+const infoTried = ref<number>(0)
 
 const infoDue = computed(() => {
   return booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && ['review'].includes(prac.status) && prac.due_counter == 0)).length || 0
 })
 
-const infoNew = computed(() => {
-  return booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && ['new'].includes(prac.status))).length || 0
+const infoRemain = computed(() => {
+  return booksStore.wordsNoPrac.length + infoDue.value + booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && prac.status !== 'review')).length
 })
 
 const infoWithin3 = computed(() => {
-  return booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && ['review'].includes(prac.status) && prac.due_counter <= 3)).length || 0
+  return booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && ['review'].includes(prac.status) && prac.due_counter <= 3 && prac.due_counter !== 0)).length || 0
 })
-
 
 const flipCard = () => { isFlipped.value = !isFlipped.value }
 
-
+async function manualSync() {
+  resetWindows()
+  await booksStore.syncServer()
+  doPrac()
+}
 
 // ====== LW & WW ==========================================
+
+const resetWindows = () => {
+  lw.value = []
+  ww.value = []
+  pracIdx.value = null
+}
 
 function moveToWins(pracs: number[]): boolean {  // randomly pick from ps
   const ps = [...pracs]
@@ -51,6 +58,7 @@ function moveToWins(pracs: number[]): boolean {  // randomly pick from ps
     if (!['review', 'waiting'].includes(booksStore.pracs[pix].status)) {
       booksStore.pracs[pix].status = 'learning'
     }
+    //console.log(`added ${pix} to lw in moveToWins.`)
     lw.value.push(pix) // put to tail
   }
   while (ps.length && ww.value.length < WWSIZE) {
@@ -76,6 +84,8 @@ function statusMove(status: string): boolean {
 
 function fillWins() {
   booksStore.createWordsNoPrac()
+
+  // lw and/or ww too large
   while (lw.value.length > LWSIZE) {
     let p = lw.value.pop()  // from tail
     ww.value.unshift(p) // to head
@@ -83,11 +93,12 @@ function fillWins() {
   while (ww.value.length > WWSIZE) {
     ww.value.pop()  // from tail
   }
-  //while (lw.value.length != LWSIZE || ww.value.length != WWSIZE) {
-  // pick 'due' ones first
+
+  // move due items first
   let ps = []
+  const currentWindows = [...lw.value, ...ww.value]
   for (let [ix, p] of booksStore.pracs.entries()) {
-    if (p.direction == booksStore.pracDir && p.status == 'review' && p.due_counter == 0) {
+    if (p.direction == booksStore.pracDir && p.status == 'review' && p.due_counter == 0 && !currentWindows.includes(ix)) {
       ps.unshift(ix)
     }
   }
@@ -102,6 +113,7 @@ function fillWins() {
     if (!['review', 'waiting'].includes(booksStore.pracs[pix].status)) {
       booksStore.pracs[pix].status = 'learning'
     }
+    //console.log(`added ${pix} to lw in fillWins1.`)
     lw.value.push(pix)  // to tail
     booksStore.createWordsNoPrac()  // may not be needed
   }
@@ -119,7 +131,7 @@ function fillWins() {
       due_counter: null,
       due_dates: null,
       id: null,
-      last_edited: new Date(), // now
+      last_edited: new Date().toISOString(), // now
       last_practiced: null,
       status: 'new',
       user_id: 1,  // +++ current_user.id
@@ -136,6 +148,7 @@ function fillWins() {
       if (pix == null) {
 	console.log('+++pix null!!!2')
       }
+      // console.log(`added ${pix} to lw in fillWins2.`)
       lw.value.push(pix)
     } else if (ww.value.length < WWSIZE) {
       // booksStore.pracs[pix].status = 'waiting'
@@ -150,6 +163,7 @@ function fillWins() {
 
 async function doPrac() {
   if (booksStore.isNextDayOrLater(booksStore.lastSyncTime)) {
+    resetWindows()
     await booksStore.syncServer()
   }
   fillWins()
@@ -161,14 +175,19 @@ async function doPrac() {
 }
 
 function onceMore() {
+  infoTried.value++
   isFlipped.value = false
+  // console.log(`added ??? to lw in onceMore.`)
   lw.value.push(lw.value.shift())
-  booksStore.pracs[pracIdx.value].last_edited = new Date()
-  booksStore.pracs[pracIdx.value].last_practiced = new Date()
+  booksStore.pracs[pracIdx.value].status = 'learning'
+  booksStore.pracs[pracIdx.value].last_edited = new Date().toISOString()
+  booksStore.pracs[pracIdx.value].last_practiced = new Date().toISOString()
   doPrac()
 }
 
 function memorized() {
+  infoTried.value++
+  infoMem.value++
   isFlipped.value = false
   if (booksStore.pracs[pracIdx.value].status == 'review') {
     booksStore.pracs[pracIdx.value].due_dates *= 2
@@ -179,17 +198,23 @@ function memorized() {
     booksStore.pracs[pracIdx.value].due_counter = 1
   }
   lw.value.shift()
-  booksStore.pracs[pracIdx.value].last_edited = new Date()
-  booksStore.pracs[pracIdx.value].last_practiced = new Date()
+  booksStore.pracs[pracIdx.value].last_edited = new Date().toISOString()
+  booksStore.pracs[pracIdx.value].last_practiced = new Date().toISOString()
   doPrac()
 }
 
 function okay() {
+  infoTried.value++
+  infoMem.value++
   //console.log('ok is pushed')
   isFlipped.value = false
   if (booksStore.pracs[pracIdx.value].status == 'review') {
-    ww.value.push(lw.value.shift()) // put tail of ww
-    lw.value.push(ww.value.shift())
+    booksStore.pracs[pracIdx.value].due_dates *= 2
+    booksStore.pracs[pracIdx.value].due_counter = booksStore.pracs[pracIdx.value].due_dates
+    lw.value.shift()
+    // ww.value.push(lw.value.shift()) // put tail of ww
+    // // console.log(`added ??? to lw in Okay1.`)
+    // lw.value.push(ww.value.shift())
   } else if (booksStore.pracs[pracIdx.value].status == 'waiting'){
     booksStore.pracs[pracIdx.value].status = 'review'
     booksStore.pracs[pracIdx.value].due_dates = 1
@@ -199,17 +224,26 @@ function okay() {
     if (pix == null) {
       console.log('+++pix null!!!3')
     } else {
+      if (booksStore.pracs[pix].status == 'new') {
+	booksStore.pracs[pix].status = 'learning'
+      }
+      // console.log(`added ??? to lw in Okay2.`)
       lw.value.push(pix)
     }
   } else {  // new or learning
     //console.log(`change to waiting: ${pracIdx.value}`)
     booksStore.pracs[pracIdx.value].status = 'waiting'
     ww.value.push(lw.value.shift()) // put tail of ww
-    lw.value.push(ww.value.shift())
+    let pix = ww.value.shift()
+    if (booksStore.pracs[pix].status == 'new') {
+      booksStore.pracs[pix].status = 'learning'
+    }
+    //console.log(`added ??? to lw in Okay3.`)
+    lw.value.push(pix)
     //console.log(`${booksStore.pracs[pracIdx.value].status}`)
   }
-  booksStore.pracs[pracIdx.value].last_edited = new Date()
-  booksStore.pracs[pracIdx.value].last_practiced = new Date()
+  booksStore.pracs[pracIdx.value].last_edited = new Date().toISOString()
+  booksStore.pracs[pracIdx.value].last_practiced = new Date().toISOString()
   doPrac()
 }
 
@@ -262,7 +296,7 @@ const speakTts = (txt: string) => {
 
   if (bestVoice) {
     utterance.voice = bestVoice
-    console.log('Using female voice:', bestVoice.name)
+    //console.log('Using female voice:', bestVoice.name)
   } else {
     console.warn('No preferred female voice matched, using browser default.')
   }
@@ -290,7 +324,7 @@ onMounted(async () => {
 
 <template>
   <Navbar>
-    <li><div @click="booksStore.syncServer"><RefreshCw />Sync</div></li>
+    <li><div @click="manualSync"><RefreshCw />Sync</div></li>
     <div class="divider my-1"></div>
   </Navbar>
   
@@ -305,8 +339,8 @@ onMounted(async () => {
     <div class="card card-lg bg-base-100 border border-base-300 rounded-xl shadow-sm mt-4 mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 " :class="booksStore.pracDir == 'wd' ? 'bg-success text-success-content' : 'bg-info text-info-content'">
       <div class="card-body py-4">
 	<div class="grid grid-cols-4 gap-4">
-	  <div>learning: {{ infoLearning }}</div>
-	  <div>new: {{ infoNew }}</div>
+	  <div>today: {{ infoMem }}/{{ infoTried }}</div>
+	  <div>remaining: {{ infoRemain }}</div>
 	  <div>due: {{ infoDue }}</div>
 	  <div>due within 3 days: {{ infoWithin3 }}</div>
 	</div>
@@ -317,7 +351,7 @@ onMounted(async () => {
     <!-- practice card -->
     <div class="flex items-center justify-center">
 
-      <div v-if="lw.length > 0" class="card card-lg bg-base-100 w-full h-[280px] border border-base-300 rounded-3xl shadow-sm mt-4 mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200">
+      <div v-if="lw.length > 0" class="card card-lg bg-base-100 w-full h-[300px] border border-base-300 rounded-3xl shadow-sm mt-4 mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200">
 	<!-- Card Header/Body Wrapper -->
 	<div @click="pracIdx !== null && (isFlipped = !isFlipped)" class="card-body flex flex-col justify-between h-full p-4 cursor-pointer">
     
@@ -359,7 +393,7 @@ onMounted(async () => {
 	  </div>
 
 	  <!-- Static Action Buttons -->
-	  <div class="flex flex-col items-center gap-3 pt-2 border-t border-base-200/50">
+	  <div class="flex flex-col items-center gap-3 pt-2">
 	    <!-- TTS -->
 	    <div class="flex justify-center gap-2 mb-3" @click.stop>
 	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.word)" class="btn btn-sm btn-success text-sm" :disabled="pracIdx === null || booksStore.pracDir === null || (!isFlipped && booksStore.pracDir !== 'wd')"><Music2 />Word</button>
@@ -393,7 +427,10 @@ onMounted(async () => {
 
     
   </div>
+  <p>This - {{ booksStore.pracs[lw[0]] }}</p>
   <p>LW: {{ lw }}</p>
   <p>WW: {{ ww }}</p>
   <p>wordsNoPrac: {{ booksStore.wordsNoPrac }}</p>
+  <p>{{ booksStore.pracs[lw[0]]?.due_counter }} {{ booksStore.pracs[lw[1]]?.due_counter }} {{ booksStore.pracs[lw[2]]?.due_counter }} {{ booksStore.pracs[lw[3]]?.due_counter }} {{ booksStore.pracs[lw[4]]?.due_counter }}</p>  
+  <p>{{ booksStore.pracs[ww[0]]?.due_counter }} {{ booksStore.pracs[ww[1]]?.due_counter }} {{ booksStore.pracs[ww[2]]?.due_counter }} {{ booksStore.pracs[ww[3]]?.due_counter }} {{ booksStore.pracs[ww[4]]?.due_counter }}</p>  
 </template>

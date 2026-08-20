@@ -188,7 +188,7 @@ export const useBooksStore = defineStore('books', () => {
     if (referenceDate == null) return false
     const startOfNextDay = new Date(referenceDate);
     startOfNextDay.setHours(24, 0, 0, 0); // Rolls over to 00:00:00 of tomorrow
-    console.log(`Firing sync from isNextDayOrLater?: ${now >= startOfNextDay}`)
+    //console.log(`Firing sync from isNextDayOrLater?: ${now >= startOfNextDay}`)
     return now >= startOfNextDay;
   }
   
@@ -227,7 +227,11 @@ export const useBooksStore = defineStore('books', () => {
     }
     for (let prac of pracs.value) {
       if (pracDir.value == prac.direction && prac.status == 'review') {
+	const oldCnt = prac.due_counter
 	prac.due_counter = Math.max((prac.due_counter ?? 0)-1, 0)
+	if (prac.due_counter != oldCnt) {
+	  prac.last_edited = new Date().toISOString()
+	}
       }
     }
   }
