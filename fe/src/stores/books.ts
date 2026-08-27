@@ -1,4 +1,4 @@
-import {ref } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type { components } from '@/types/api'
 import { client } from '@/api/client'
@@ -21,6 +21,7 @@ export const useBooksStore = defineStore('books', () => {
   const lastSyncTime = ref<Date | null>(null)
 
   const userStore = useUserStore()
+  const userId = computed(() => userStore.user?.id ?? null)
   
   async function fetchBooks() {
     const { data, error } = await client.GET('/books', {
@@ -236,5 +237,5 @@ export const useBooksStore = defineStore('books', () => {
     }
   }
   
-  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer }
+  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer, userId }
 })

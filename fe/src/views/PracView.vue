@@ -1,251 +1,32 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, computed, reactive } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
+import { PracEngine } from '@/lib/pracengine'
 import { ThumbsUp, ThumbsDown, SkipForward, Music, Music2, Music3, RefreshCw } from '@lucide/vue'
 import type { components } from '@/types/api'
 import Navbar from '@/components/Navbar.vue'
 
-type PracticeSchema = components['schemas']['PracticeSchema']
-
-const LWSIZE = 5
-const WWSIZE = 5
 const booksStore = useBooksStore()
+const engine = reactive(new PracEngine(booksStore))
 const isFlipped = ref<boolean>(false)
-const lw = ref<number[]>([])  // learning window
-const ww = ref<number[]>([])  // waiting window
-const pracIdx = ref<number | null>(null) // the one currently practicing
 const voices = ref<SpeechSynthesisVoice[]>([]) // for TTS
-const infoMem = ref<number>(0)
-const infoTried = ref<number>(0)
 
-const infoDue = computed(() => {
-  return booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && ['review'].includes(prac.status) && prac.due_counter == 0)).length || 0
-})
+const infoMem = computed(() => engine.infoMem)
+const infoTried = computed(() => engine.infoTried)
 
-const infoRemain = computed(() => {
-  return booksStore.wordsNoPrac.length + infoDue.value + booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && prac.status !== 'review')).length
-})
-
-const infoWithin3 = computed(() => {
-  return booksStore.pracs?.filter(prac => (prac.direction == booksStore.pracDir && ['review'].includes(prac.status) && prac.due_counter <= 3 && prac.due_counter !== 0)).length || 0
-})
+const infoDue = computed(() => engine.getInfoDue())
+const infoRemain = computed(() => engine.getInfoRemain())
+const infoWithin3 = computed(() => engine.getInfoWithin3())
 
 const flipCard = () => { isFlipped.value = !isFlipped.value }
 
 async function manualSync() {
-  resetWindows()
+  engine.resetWindows()
   await booksStore.syncServer()
-  doPrac()
+  await engine.doPrac()
 }
 
-// ====== LW & WW ==========================================
-
-const resetWindows = () => {
-  lw.value = []
-  ww.value = []
-  pracIdx.value = null
-}
-
-function moveToWins(pracs: number[]): boolean {  // randomly pick from ps
-  const ps = [...pracs]
-  for (let i = ps.length-1; i> 0; i--) {
-    const j = Math.floor(Math.random() * (i+1));
-    [ps[i], ps[j]] = [ps[j], ps[i]]
-  }
-  while (ps.length && lw.value.length < LWSIZE) {
-    let pix = ps.pop()
-    if (!['review', 'waiting'].includes(booksStore.pracs[pix].status)) {
-      booksStore.pracs[pix].status = 'learning'
-    }
-    //console.log(`added ${pix} to lw in moveToWins.`)
-    lw.value.push(pix) // put to tail
-  }
-  while (ps.length && ww.value.length < WWSIZE) {
-    let pix = ps.pop()
-    ww.value.push(pix) // put to tail
-  }
-  if (lw.value.length >= LWSIZE && ww.value.length >= WWSIZE) {
-    return true
-  }
-  return false
-}
-
-function statusMove(status: string): boolean {
-  let ps = []
-  for (let [ix, p] of booksStore.pracs.entries()) {
-    if (p.direction == booksStore.pracDir && p.status == status && ![...lw.value, ...ww.value].includes(ix)) {
-      ps.push(ix)
-    }
-  }
-  if (moveToWins(ps)) return true
-  return false
-}
-
-function fillWins() {
-  booksStore.createWordsNoPrac()
-
-  // lw and/or ww too large
-  while (lw.value.length > LWSIZE) {
-    let p = lw.value.pop()  // from tail
-    ww.value.unshift(p) // to head
-  }
-  while (ww.value.length > WWSIZE) {
-    ww.value.pop()  // from tail
-  }
-
-  // move due items first
-  let ps = []
-  const currentWindows = [...lw.value, ...ww.value]
-  for (let [ix, p] of booksStore.pracs.entries()) {
-    if (p.direction == booksStore.pracDir && p.status == 'review' && p.due_counter == 0 && !currentWindows.includes(ix)) {
-      ps.unshift(ix)
-    }
-  }
-  if (moveToWins(ps)) return
-
-  // move from ww to lw
-  while (ww.value.length && lw.value.length < LWSIZE) {
-    let pix = ww.value.shift()  // from head
-    if (pix == null) {
-      console.log('+++pix null!!!1')
-    }
-    if (!['review', 'waiting'].includes(booksStore.pracs[pix].status)) {
-      booksStore.pracs[pix].status = 'learning'
-    }
-    //console.log(`added ${pix} to lw in fillWins1.`)
-    lw.value.push(pix)  // to tail
-    booksStore.createWordsNoPrac()  // may not be needed
-  }
-
-  // status == learning -> waiting -> new
-  if (statusMove('learning')) return
-  if (statusMove('waiting')) return
-  if (statusMove('new')) return
-
-  // words without practice
-  const wnp = [...booksStore.wordsNoPrac]
-  for (let wix of booksStore.wordsNoPrac) {
-    const p: PracticeSchema = {
-      direction: booksStore.pracDir,
-      due_counter: null,
-      due_dates: null,
-      id: null,
-      last_edited: new Date().toISOString(), // now
-      last_practiced: null,
-      status: 'new',
-      user_id: 1,  // +++ current_user.id
-      word_id: booksStore.words[wix].id,
-    }
-    const idx = wnp.indexOf(wix)
-    if (idx !== -1) {
-      wnp.splice(idx, 1)
-    }
-    booksStore.pracs.push(p)
-    let pix = booksStore.pracs.length-1  // one just added
-    if (lw.value.length < LWSIZE) {
-      booksStore.pracs[pix].status = 'learning'
-      if (pix == null) {
-	console.log('+++pix null!!!2')
-      }
-      // console.log(`added ${pix} to lw in fillWins2.`)
-      lw.value.push(pix)
-    } else if (ww.value.length < WWSIZE) {
-      // booksStore.pracs[pix].status = 'waiting'
-      ww.value.push(pix)
-    }
-    if (lw.value.length == LWSIZE && ww.value.length == WWSIZE) return
-  }
-  booksStore.wordsNoPrac = [...wnp]
-}
-
-// ====== practice =========================================
-
-async function doPrac() {
-  if (booksStore.isNextDayOrLater(booksStore.lastSyncTime)) {
-    resetWindows()
-    await booksStore.syncServer()
-  }
-  fillWins()
-  if (lw.value.length == 0) {
-    pracIdx.value = null
-    return
-  }
-  pracIdx.value = lw.value[0]  // not remove yet
-}
-
-function onceMore() {
-  infoTried.value++
-  isFlipped.value = false
-  // console.log(`added ??? to lw in onceMore.`)
-  lw.value.push(lw.value.shift())
-  booksStore.pracs[pracIdx.value].status = 'learning'
-  booksStore.pracs[pracIdx.value].last_edited = new Date().toISOString()
-  booksStore.pracs[pracIdx.value].last_practiced = new Date().toISOString()
-  doPrac()
-}
-
-function memorized() {
-  infoTried.value++
-  infoMem.value++
-  isFlipped.value = false
-  if (booksStore.pracs[pracIdx.value].status == 'review') {
-    booksStore.pracs[pracIdx.value].due_dates *= 2
-    booksStore.pracs[pracIdx.value].due_counter = booksStore.pracs[pracIdx.value].due_dates
-  } else {
-    booksStore.pracs[pracIdx.value].status = 'review'
-    booksStore.pracs[pracIdx.value].due_dates = 1
-    booksStore.pracs[pracIdx.value].due_counter = 1
-  }
-  lw.value.shift()
-  booksStore.pracs[pracIdx.value].last_edited = new Date().toISOString()
-  booksStore.pracs[pracIdx.value].last_practiced = new Date().toISOString()
-  doPrac()
-}
-
-function okay() {
-  infoTried.value++
-  infoMem.value++
-  //console.log('ok is pushed')
-  isFlipped.value = false
-  if (booksStore.pracs[pracIdx.value].status == 'review') {
-    booksStore.pracs[pracIdx.value].due_dates *= 2
-    booksStore.pracs[pracIdx.value].due_counter = booksStore.pracs[pracIdx.value].due_dates
-    lw.value.shift()
-    // ww.value.push(lw.value.shift()) // put tail of ww
-    // // console.log(`added ??? to lw in Okay1.`)
-    // lw.value.push(ww.value.shift())
-  } else if (booksStore.pracs[pracIdx.value].status == 'waiting'){
-    booksStore.pracs[pracIdx.value].status = 'review'
-    booksStore.pracs[pracIdx.value].due_dates = 1
-    booksStore.pracs[pracIdx.value].due_counter = 1
-    lw.value.shift()
-    const pix = ww.value.shift()    
-    if (pix == null) {
-      console.log('+++pix null!!!3')
-    } else {
-      if (booksStore.pracs[pix].status == 'new') {
-	booksStore.pracs[pix].status = 'learning'
-      }
-      // console.log(`added ??? to lw in Okay2.`)
-      lw.value.push(pix)
-    }
-  } else {  // new or learning
-    //console.log(`change to waiting: ${pracIdx.value}`)
-    booksStore.pracs[pracIdx.value].status = 'waiting'
-    ww.value.push(lw.value.shift()) // put tail of ww
-    let pix = ww.value.shift()
-    if (booksStore.pracs[pix].status == 'new') {
-      booksStore.pracs[pix].status = 'learning'
-    }
-    //console.log(`added ??? to lw in Okay3.`)
-    lw.value.push(pix)
-    //console.log(`${booksStore.pracs[pracIdx.value].status}`)
-  }
-  booksStore.pracs[pracIdx.value].last_edited = new Date().toISOString()
-  booksStore.pracs[pracIdx.value].last_practiced = new Date().toISOString()
-  doPrac()
-}
 
 // ====== TTS ==============================================
 
@@ -309,15 +90,15 @@ onBeforeRouteLeave(async () => {
 })
 
 onMounted(async () => {
-  lw.value = []
-  ww.value = []
-  //booksStore.pracs = []
+  engine.resetWindows()
+  //lw.value = []
+  //ww.value = []
   loadVoices()
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = loadVoices
   }
   await booksStore.syncServer()
-  doPrac()
+  await engine.doPrac()
 })
 
 </script>
@@ -351,9 +132,9 @@ onMounted(async () => {
     <!-- practice card -->
     <div class="flex items-center justify-center">
 
-      <div v-if="lw.length > 0" class="card card-lg bg-base-100 w-full h-[300px] border border-base-300 rounded-3xl shadow-sm mt-4 mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200">
+      <div v-if="engine.lw.length > 0" class="card card-lg bg-base-100 w-full h-[300px] border border-base-300 rounded-3xl shadow-sm mt-4 mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200">
 	<!-- Card Header/Body Wrapper -->
-	<div @click="pracIdx !== null && (isFlipped = !isFlipped)" class="card-body flex flex-col justify-between h-full p-4 cursor-pointer">
+	<div @click="engine.pracIdx !== null && (isFlipped = !isFlipped)" class="card-body flex flex-col justify-between h-full p-4 cursor-pointer">
     
 	  <div 
 	    class="flex-1 flex flex-col justify-center"
@@ -370,23 +151,23 @@ onMounted(async () => {
               <!-- Front Content -->
               <div v-if="!isFlipped" key="front" class="flex flex-col items-center justify-center space-y-4">
 		<h1 v-if="booksStore.pracDir == 'wd'" class="text-4xl font-bold text-center">
-		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.word }}
+		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.word }}
 		</h1>
 		<h1 v-else class="text-4xl font-bold text-center">
-		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.definition }}
+		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.definition }}
 		</h1>
               </div>
 
               <!-- Back Content -->
               <div v-else key="back" class="flex flex-col items-center justify-center space-y-4 overflow-y-auto max-h-[220px] px-2">
-		<h1 class="text-3xl font-bold text-center">{{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.word }}</h1>
+		<h1 class="text-3xl font-bold text-center">{{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.word }}</h1>
           
 		<p class="text-lg opacity-80 text-center">
-		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.definition }}
+		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.definition }}
 		</p>
 
 		<p class="italic text-base-content/70 bg-base-100/50 rounded-xl text-center">
-		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.sample }}
+		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.sample }}
 		</p>
               </div>
 	    </Transition>
@@ -396,15 +177,15 @@ onMounted(async () => {
 	  <div class="flex flex-col items-center gap-3 pt-2">
 	    <!-- TTS -->
 	    <div class="flex justify-center gap-2 mb-3" @click.stop>
-	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.word)" class="btn btn-sm btn-success text-sm" :disabled="pracIdx === null || booksStore.pracDir === null || (!isFlipped && booksStore.pracDir !== 'wd')"><Music2 />Word</button>
-	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.definition)" class="btn btn-sm btn-error text-sm" :disabled="pracIdx === null || booksStore.pracDir === null || (!isFlipped && booksStore.pracDir !== 'dw')"><Music3 />Definition</button>
-	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[pracIdx]?.word_id)]?.sample)" class="btn btn-sm btn-info text-sm" :disabled="pracIdx === null || booksStore.pracDir === null || !isFlipped"><Music />Sample</button>
+	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.word)" class="btn btn-sm btn-success text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!isFlipped && booksStore.pracDir !== 'wd')"><Music2 />Word</button>
+	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.definition)" class="btn btn-sm btn-error text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!isFlipped && booksStore.pracDir !== 'dw')"><Music3 />Definition</button>
+	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.sample)" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !isFlipped"><Music />Sample</button>
 	    </div>
 	    <!-- Action buttons -->
 	    <div class="card-actions justify-center gap-2">
-	      <button @click.stop="onceMore" class="btn btn-secondary rounded-3xl btn-outline btn-lg" :disabled="pracIdx === null"><ThumbsDown />Once More </button>
-	      <button @click.stop="okay" class="btn btn-success rounded-3xl btn-outline btn-lg" :disabled="pracIdx === null"><ThumbsUp />Okay</button>
-	      <button @click.stop="memorized" class="btn btn-info rounded-3xl btn-outline btn-lg ml-8"  :disabled="pracIdx === null"><SkipForward />Memorized</button>
+	      <button @click.stop="engine.onceMore" class="btn btn-secondary rounded-3xl btn-outline btn-lg" :disabled="engine.pracIdx === null"><ThumbsDown />Once More </button>
+	      <button @click.stop="engine.okay" class="btn btn-success rounded-3xl btn-outline btn-lg" :disabled="engine.pracIdx === null"><ThumbsUp />Okay</button>
+	      <button @click.stop="engine.memorized" class="btn btn-info rounded-3xl btn-outline btn-lg ml-8"  :disabled="engine.pracIdx === null"><SkipForward />Memorized</button>
 	    </div>
 	  </div>
 
@@ -427,10 +208,8 @@ onMounted(async () => {
 
     
   </div>
-  <p>This - {{ booksStore.pracs[lw[0]] }}</p>
-  <p>LW: {{ lw }}</p>
-  <p>WW: {{ ww }}</p>
+  <p>This - {{ booksStore.pracs[engine.lw[0]] }}</p>
+  <p>LW: {{ engine.lw }}</p>
+  <p>WW: {{ engine.ww }}</p>
   <p>wordsNoPrac: {{ booksStore.wordsNoPrac }}</p>
-  <p>{{ booksStore.pracs[lw[0]]?.due_counter }} {{ booksStore.pracs[lw[1]]?.due_counter }} {{ booksStore.pracs[lw[2]]?.due_counter }} {{ booksStore.pracs[lw[3]]?.due_counter }} {{ booksStore.pracs[lw[4]]?.due_counter }}</p>  
-  <p>{{ booksStore.pracs[ww[0]]?.due_counter }} {{ booksStore.pracs[ww[1]]?.due_counter }} {{ booksStore.pracs[ww[2]]?.due_counter }} {{ booksStore.pracs[ww[3]]?.due_counter }} {{ booksStore.pracs[ww[4]]?.due_counter }}</p>  
 </template>
