@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive } from 'vue'
+import { ref, onMounted, computed, reactive, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { PracEngine } from '@/lib/pracengine'
@@ -26,6 +26,10 @@ async function manualSync() {
   await booksStore.syncServer()
   await engine.doPrac()
 }
+
+watch(() => engine.pracIdx, () => {
+  isFlipped.value = false
+})
 
 
 // ====== TTS ==============================================
@@ -86,6 +90,7 @@ const speakTts = (txt: string) => {
 }
 
 onBeforeRouteLeave(async () => {
+  isFlipped.value = false
   await booksStore.syncServer()
 })
 
@@ -212,4 +217,5 @@ onMounted(async () => {
   <p>LW: {{ engine.lw }}</p>
   <p>WW: {{ engine.ww }}</p>
   <p>wordsNoPrac: {{ booksStore.wordsNoPrac }}</p>
+  <p>isFlipped: {{ isFlipped }}</p>
 </template>

@@ -879,3 +879,9 @@ From backlogs:
 - Add testing
 - Hosting at pythonanywhre
 #+end_src
+
+- 8/27
+#+begin_src 
+pnpm test
+#+end_src
+
