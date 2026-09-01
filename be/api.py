@@ -46,8 +46,16 @@ load_dotenv()
 
 info = Info(title="vb2 server", version="0.0.1")
 app = OpenAPI(__name__, info=info)
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(basedir, 'db.db')}"
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"echo": True}
+
+if os.getenv("TESTING"):
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"echo": False}
+else:
+    app.config["SQLALCHEMY_DATABASE_URI"] = (
+        f"sqlite:///{os.path.join(basedir, 'db.db')}"
+    )
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"echo": True}
+
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=14)
 CORS(app, origins=["http://localhost:5173"])

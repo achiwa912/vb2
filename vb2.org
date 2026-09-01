@@ -144,6 +144,7 @@ uv add flask flask-sqlalchemy authlib flask-jwt-extended flask-cors
 uv add flask-openapi3 flask-openapi3-swagger
 uv add python-dotenv
 uv add google-auth requests
+uv add --dev pytest
 uv pip list
 #+end_src
 
@@ -885,3 +886,50 @@ From backlogs:
 pnpm test
 #+end_src
 
+- context (8/28/2026)
+#+begin_src 
+VB2 SESSION HANDOFF — moving to backend tests
+
+CONTEXT
+Frontend Vitest suite for PracEngine (pracengine.ts / pracengine.spec.ts)
+is done — full branch coverage on okay()/memorized()/onceMore()/fillWins(),
+including the FIFO ww-promotion edge cases. Kyosuke is satisfied with FE
+coverage for now.
+
+NEXT
+Shift to backend test coverage.
+
+BACKEND STACK
+- Flask / flask-openapi3
+- SQLAlchemy / SQLite
+- flask-jwt-extended
+- Google OAuth (frontend-token-handoff: id_token.verify_oauth2_token)
+
+KNOWN PATTERNS TO KEEP IN MIND WHEN WRITING TESTS
+- Ownership checks embedded in queries return 404, not 401
+- model_validate(..., from_attributes=True) for ORM -> Pydantic
+- Separate CreateXReq / PatchXReq / XSchema models
+- Datetime normalization: .astimezone(UTC).replace(tzinfo=None) for
+  SQLite-safe comparisons
+- field_serializer on schemas attaches UTC markers on outbound responses
+- Export/import: ExportResp shared schema, .model_dump(mode="json")
+  needed to run serializers before Flask touches the data
+- Auth middleware (client.ts, frontend side) calls useUserStore() inside
+  onResponse, not module scope — not backend, but relevant context if
+  auth flows come up
+
+STATUS
+Full CRUD surface for books/words is complete on both backend and
+frontend. No backend test scope decided yet — first task next session
+is to pick where to start (e.g. auth/ownership checks, datetime
+normalization, export/import round-trip).
+
+WORKING STYLE
+Socratic, one problem at a time, concise. Kyosuke writes all code
+himself — don't provide code unless explicitly requested. Answer
+immediate question only, no unsolicited follow-ups.
+#+end_src
+
+#+begin_src 
+uv add --dev pytest
+#+end_src
