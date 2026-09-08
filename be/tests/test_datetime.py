@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timezone, timedelta
 from typing import cast
 from flask import Flask
 from flask.testing import FlaskClient
@@ -131,7 +131,7 @@ def test_sync_book_normalizes_practice_datetimes(
         db.session.commit()
         word_id = word.id
 
-    now = datetime.now(UTC)
+    now = datetime.now(timezone(timedelta(hours=9)))  # JST, +09:00
     resp = client.post(
         f"/sync/{book_id}",
         json={
@@ -189,5 +189,5 @@ def test_sync_book_normalizes_practice_datetimes(
         )
 
 
-# Note: I plan to add time format checks at each step in an export -> import
-# (round-trip) integration test
+# Note: I added time format checks at each step in an export -> import
+# (round-trip) integration test --> see test_export.py

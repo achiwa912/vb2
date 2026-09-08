@@ -37,6 +37,24 @@ function makeStore(overrides: Partial<PracStoreLike> = {}): PracStoreLike {
 // ====== tests from here ==================================
 
 describe('PracEngine', () => {
+  it('only one item in LW should set isFlipped as false', async () => {
+    const store = makeStore({
+      pracs: [makePractice({ status: 'new' }),],
+      wordsNoPrac: [],
+    })
+
+    const engine = new PracEngine(store, {
+      lwsize: 5,
+      wwsize: 5,
+      random: () => 0.2,
+    })
+    await engine.doPrac()
+    await engine.onceMore()  // 'learning'
+    expect(isFlipped.value).toBe(false)
+    await engine.okay() // 'learning' -> 'waiting'
+    expect(isFlipped.value).toBe(false)
+  })
+  
   it('moves due items into LW first', async () => {
 
     const store = makeStore({

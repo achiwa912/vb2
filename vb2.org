@@ -933,3 +933,6 @@ immediate question only, no unsolicited follow-ups.
 #+begin_src 
 uv add --dev pytest
 #+end_src
+
+**** bug
+- If I click once more for the only word prac which is 'waiting', it doesn't flip back

@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, UTC
 
 os.environ["TESTING"] = "1"
 os.environ["JWT_SECRET_KEY"] = "a-very-long-test-secret-key-for-jwt-1234567890"
@@ -89,3 +90,12 @@ def auth_headers1(token1: str):
 @pytest.fixture
 def auth_headers2(token2: str):
     return {"Authorization": f"Bearer {token2}"}
+
+
+# --- Utilities ---
+def to_naive_utc(dt: datetime | None) -> datetime | None:
+    if not dt:
+        return dt
+    if dt.tzinfo is not None:
+        return dt.astimezone(UTC).replace(tzinfo=None)
+    return dt

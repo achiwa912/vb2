@@ -27,7 +27,7 @@ async function manualSync() {
   await engine.doPrac()
 }
 
-watch(() => engine.pracIdx, () => {
+watch(() => engine.infoTried, () => {
   isFlipped.value = false
 })
 
