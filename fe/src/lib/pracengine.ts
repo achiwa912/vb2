@@ -29,7 +29,8 @@ export class PracEngine {
   pracIdx: number | null
   infoTried: number
   infoMem: number
-
+  isFlipped: boolean
+  
   private store: PracStoreLike
   private lwsize: number
   private wwsize: number
@@ -48,6 +49,7 @@ export class PracEngine {
     this.pracIdx = null
     this.infoTried = 0
     this.infoMem = 0
+    this.isFlipped = false
   }
 
   resetWindows() {
@@ -189,6 +191,7 @@ export class PracEngine {
 
   async onceMore() {
     this.infoTried++
+    this.isFlipped = false
     const idx = this.lw.shift() ?? null
     if (idx === null) return
     this.pracIdx = idx
@@ -202,6 +205,7 @@ export class PracEngine {
   async memorized() {
     this.infoTried++
     this.infoMem++
+    this.isFlipped = false
     const idx = this.pracIdx
     if (idx === null) return
 
@@ -223,6 +227,7 @@ export class PracEngine {
   async okay() {
     this.infoTried++
     this.infoMem++
+    this.isFlipped = false
     const idx = this.pracIdx
     if (idx === null) return
 

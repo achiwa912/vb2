@@ -49,10 +49,12 @@ describe('PracEngine', () => {
       random: () => 0.2,
     })
     await engine.doPrac()
+    engine.isFlipped = true
     await engine.onceMore()  // 'learning'
-    expect(isFlipped.value).toBe(false)
+    expect(engine.isFlipped).toBe(false)
+    engine.isFlipped = true
     await engine.okay() // 'learning' -> 'waiting'
-    expect(isFlipped.value).toBe(false)
+    expect(engine.isFlipped).toBe(false)
   })
   
   it('moves due items into LW first', async () => {
