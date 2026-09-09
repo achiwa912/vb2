@@ -16,19 +16,19 @@ type BookSchema = components['schemas']['BookSchema']
 const booksStore = useBooksStore()
 const userStore = useUserStore()
 const router = useRouter()
-const modalRef = ref(null)
-const toastRef = ref(null)
-const selectedBook = ref(null)
+const modalRef = ref<HTMLDialogElement | null>(null)
+const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
+const selectedBook = ref<BookSchema | null>(null)
 const isNew = ref<boolean>(false)
 const bookName = ref<string>('')
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-function wordsView(bid) {
+function wordsView(bid: number) {
   booksStore.activeBookId = bid
   router.push('/words')
 }
 
-const openModal = (book) => {
+const openModal = (book: BookSchema | null) => {
   console.log(book)
   if (book != null) {
     selectedBook.value = book
@@ -83,7 +83,11 @@ async function exportAll() {
     headers: { 'Authorization': `Bearer ${userStore.access_token}`},
   })
   if (error) {
-    toastRef.value?.showAlert(`Export failed: ${error.message} (${response.status})`, 'error')
+    if ('message' in error) {
+      toastRef.value?.showAlert(`Export failed: ${error.message} (${response.status})`, 'error')
+    } else {
+      toastRef.value?.showAlert(`Export failed: unknown error (${response.status})`, 'error')
+    }
     return
   }
   const jsonData = JSON.stringify(data, null, 2);
@@ -122,7 +126,11 @@ async function importAll(event: Event) {
     body: data,
   })
   if (error) {
-    toastRef.value?.showAlert(`Import failed: ${error.message} (${response.status})`, 'error')
+    if ('message' in error) {
+      toastRef.value?.showAlert(`Import failed: ${error.message} (${response.status})`, 'error')
+    } else {
+      toastRef.value?.showAlert(`Import failed: unknown error (${response.status})`, 'error')
+    }
   } else {
     toastRef.value?.showAlert(`Successfuly imported`, 'success')
   }

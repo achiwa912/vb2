@@ -1,12 +1,17 @@
 <!-- components/ToastContainer.vue -->
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 
 // Reactive array to hold active alerts
-const alerts = ref([])
+interface Alert {
+  id: number
+  message: string
+  type: string
+}
+const alerts = ref<Alert[]>([])
 
 // Global/exported method to trigger alerts
-const showAlert = (message, type = 'warning', duration = 3000) => {
+const showAlert = (message: string, type: string = 'warning', duration: number = 3000) => {
   const id = Date.now()
   alerts.value.push({ id, message, type })
 
@@ -16,7 +21,7 @@ const showAlert = (message, type = 'warning', duration = 3000) => {
   }, duration)
 }
 
-const removeAlert = (id) => {
+const removeAlert = (id: number) => {
   alerts.value = alerts.value.filter((a) => a.id !== id)
 }
 

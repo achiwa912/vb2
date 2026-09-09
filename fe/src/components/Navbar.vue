@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useUserStore } from '@/stores/user'
@@ -7,6 +8,11 @@ const router = useRouter()
 const route = useRoute()
 const booksStore = useBooksStore()
 const userStore = useUserStore()
+
+const activeBook = computed(() => {
+  const ix = booksStore.id2ixBook(booksStore.activeBookId)
+  return ix === null ? undefined : booksStore.books[ix]
+})
 
 function logout() {
   userStore.unsetUser()
@@ -46,7 +52,7 @@ function goWords() {
 	  <div v-if="route.path.includes('/prac')" class="flex items-center text-sm mx-6">
 	    <div>
 	      <span class="text-base-content/30">></span>
-	      <span @click="goWords" class="cursor-pointer ml-2">{{ booksStore.books[booksStore.id2ixBook(booksStore.activeBookId)]?.name }}</span>
+	      <span @click="goWords" class="cursor-pointer ml-2">{{ activeBook?.name }}</span>
 	    </div>
 	  </div>
 	
@@ -62,7 +68,7 @@ function goWords() {
           >
             <!-- Optional Avatar -->
             <div class="w-8 h-8 bg-base-300 rounded-2xl flex items-center justify-center text-sm font-medium ring-2 ring-base-200">
-              {{ userStore.name[0] }}
+              {{ userStore.name?.[0] }}
             </div>
             
             <div class="text-left">

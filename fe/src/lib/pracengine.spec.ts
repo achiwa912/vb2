@@ -210,8 +210,8 @@ describe('PracEngine', () => {
   
   it('creates new practices with correct word_id and user_id', async () => {
     const words = [
-      { id: 10, book_id: 1, word: 'a', definition: 'A', sample: '' },
-      { id: 20, book_id: 1, word: 'b', definition: 'B', sample: '' },
+      { id: 10, book_id: 1, word: 'a', definition: 'A', sample: '', 'last_edited': '2026-08-14T12:07:47.836246Z' },
+      { id: 20, book_id: 1, word: 'b', definition: 'B', sample: '', 'last_edited': '2026-08-14T12:07:47.836246Z' },
     ];
     const store = makeStore({
       words,

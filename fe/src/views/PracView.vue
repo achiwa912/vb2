@@ -19,6 +19,22 @@ const infoDue = computed(() => engine.getInfoDue())
 const infoRemain = computed(() => engine.getInfoRemain())
 const infoWithin3 = computed(() => engine.getInfoWithin3())
 
+const currentWord = computed(() => {
+  if (engine.pracIdx == null) return null
+  const prac = booksStore.pracs[engine.pracIdx]
+  if (!prac || prac.word_id == null) return null
+
+  const idx = booksStore.id2ixWord(prac.word_id)
+  if (idx == null) return null
+
+  return booksStore.words[idx] ?? null
+})
+
+const currentPrac = computed(() => {
+  if (engine.lw[0] == null) return null
+  return booksStore.pracs[engine.lw[0]] ?? null
+})
+
 const flipCard = () => { engine.isFlipped = !engine.isFlipped }
 
 async function manualSync() {
@@ -33,6 +49,22 @@ async function manualSync() {
 
 
 // ====== TTS ==============================================
+
+const speakWord = () => {
+  if (currentWord.value?.word) {
+    speakTts(currentWord.value.word)
+  }
+}
+const speakDef = () => {
+  if (currentWord.value?.definition) {
+    speakTts(currentWord.value.definition)
+  }
+}
+const speakSmpl = () => {
+  if (currentWord.value?.sample) {
+    speakTts(currentWord.value.sample)
+  }
+}
 
 const loadVoices = () => {
   if (!('speechSynthesis' in window)) return
@@ -156,23 +188,23 @@ onMounted(async () => {
               <!-- Front Content -->
               <div v-if="!engine.isFlipped" key="front" class="flex flex-col items-center justify-center space-y-4">
 		<h1 v-if="booksStore.pracDir == 'wd'" class="text-4xl font-bold text-center">
-		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.word }}
+		  {{ currentWord?.word }}
 		</h1>
 		<h1 v-else class="text-4xl font-bold text-center">
-		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.definition }}
+		  {{ currentWord?.definition }}
 		</h1>
               </div>
 
               <!-- Back Content -->
               <div v-else key="back" class="flex flex-col items-center justify-center space-y-4 overflow-y-auto max-h-[220px] px-2">
-		<h1 class="text-3xl font-bold text-center">{{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.word }}</h1>
+		<h1 class="text-3xl font-bold text-center">{{ currentWord?.word }}</h1>
           
 		<p class="text-lg opacity-80 text-center">
-		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.definition }}
+		  {{ currentWord?.definition }}
 		</p>
 
 		<p class="italic text-base-content/70 bg-base-100/50 rounded-xl text-center">
-		  {{ booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.sample }}
+		  {{ currentWord?.sample }}
 		</p>
               </div>
 	    </Transition>
@@ -182,9 +214,9 @@ onMounted(async () => {
 	  <div class="flex flex-col items-center gap-3 pt-2">
 	    <!-- TTS -->
 	    <div class="flex justify-center gap-2 mb-3" @click.stop>
-	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.word)" class="btn btn-sm btn-success text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!engine.isFlipped && booksStore.pracDir !== 'wd')"><Music2 />Word</button>
-	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.definition)" class="btn btn-sm btn-error text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!engine.isFlipped && booksStore.pracDir !== 'dw')"><Music3 />Definition</button>
-	      <button @click.stop="speakTts(booksStore.words[booksStore.id2ixWord(booksStore.pracs[engine.pracIdx]?.word_id)]?.sample)" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !engine.isFlipped"><Music />Sample</button>
+	      <button @click.stop="speakWord" class="btn btn-sm btn-success text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!engine.isFlipped && booksStore.pracDir !== 'wd')"><Music2 />Word</button>
+	      <button @click.stop="speakDef" class="btn btn-sm btn-error text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!engine.isFlipped && booksStore.pracDir !== 'dw')"><Music3 />Definition</button>
+	      <button @click.stop="speakSmpl" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !engine.isFlipped"><Music />Sample</button>
 	    </div>
 	    <!-- Action buttons -->
 	    <div class="card-actions justify-center gap-2">
@@ -213,7 +245,7 @@ onMounted(async () => {
 
     
   </div>
-  <p>This - {{ booksStore.pracs[engine.lw[0]] }}</p>
+  <p>This - {{ currentPrac }}</p>
   <p>LW: {{ engine.lw }}</p>
   <p>WW: {{ engine.ww }}</p>
   <p>wordsNoPrac: {{ booksStore.wordsNoPrac }}</p>

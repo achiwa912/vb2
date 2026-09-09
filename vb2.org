@@ -936,3 +936,21 @@ uv add --dev pytest
 
 **** bug
 - If I click once more for the only word prac which is 'waiting', it doesn't flip back
+
+** Deploying to PythonAnywhere
+*** Tear down vbs
+- Disable webapp from Web tab
+- Open bash console on PA
+#+begin_src 
+pwd
+# /home/achiwa912
+ls -la vbs
+rm -rf vbs
+
+#+end_src
+
+*** Build FE locally
+#+begin_src 
+pnpm install  # already did
+pnpm build
+#+end_src

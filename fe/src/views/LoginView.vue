@@ -8,7 +8,7 @@ const router = useRouter()
 const route = useRoute()
 const googleButtonRef = ref(null)
 
-const handleCredentialResponse = async (response) => {
+const handleCredentialResponse = async (response: { credential: string }) => {
   // response.credential is the raw JWT ID Token sent by Google
   const idToken = response.credential
 
@@ -38,7 +38,7 @@ const handleCredentialResponse = async (response) => {
 }
 
 function loadGoogleScript() {
-  return new Promise((resolve) => {
+  return new Promise<void>((resolve) => {
     if (window.google?.accounts) return resolve()
 
     const script = document.createElement('script')

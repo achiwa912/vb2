@@ -21,7 +21,7 @@ export const useBooksStore = defineStore('books', () => {
   const lastSyncTime = ref<Date | null>(null)
 
   const userStore = useUserStore()
-  const userId = computed(() => userStore.user?.id ?? null)
+  const userId = computed(() => userStore.user_id ?? null)
   
   async function fetchBooks() {
     const { data, error } = await client.GET('/books', {
@@ -63,7 +63,7 @@ export const useBooksStore = defineStore('books', () => {
     pracs.value = data.practices
   }
   
-  async function addBook(bookName: string): Promise<{ status: number, message: string }> {
+  async function addBook(bookName: string | null): Promise<{ status: number, message: string }> {
     if (!bookName) return { status: 404, message: "Book not found" }
     const { data, error } = await client.POST('/books', {
       headers: { 'Authorization': `Bearer ${userStore.access_token}`},
@@ -94,7 +94,7 @@ export const useBooksStore = defineStore('books', () => {
     return { status: 200, message: "Updated book"}
   }
 
-  async function deleteBook(book: BookSchema): Promise<{ status: number, message: string }> {
+  async function deleteBook(book: BookSchema | null): Promise<{ status: number, message: string }> {
     if (!book) return { status: 404, message: "Book not found" }
     const { error, response } = await client.DELETE('/books/{id}', {
       headers: { 'Authorization': `Bearer ${userStore.access_token}`},
@@ -113,7 +113,8 @@ export const useBooksStore = defineStore('books', () => {
   return { status: 200, message: "Deleted book" }
   }
   
-  async function addWord(word: string, definition: string, sample: string, book_id: number): Promise<{ status: number, message: string }> {
+  async function addWord(word: string | null, definition: string, sample: string, book_id: number | null): Promise<{ status: number, message: string }> {
+    if (!book_id) return { status: 404, message: "Book not found" }
     if (!word) return { status: 404, message: "Word not found" }
     const { data, error, response } = await client.POST('/books/{id}/words', {
       headers: { 'Authorization': `Bearer ${userStore.access_token}`},
@@ -131,7 +132,7 @@ export const useBooksStore = defineStore('books', () => {
     return { status: 200, message: "Added word"}
   }
 
-  async function editWord(word: string, definition: string, sample: string, book_id: number, word_id: number): Promise<{ status: number, message: string}> {
+  async function editWord(word: string | null, definition: string, sample: string, book_id: number, word_id: number): Promise<{ status: number, message: string}> {
     if (!word) return { status: 404, message: "Word not found" }
     const { data, error, response } = await client.PATCH('/books/{bid}/words/{wid}', {
       headers: { 'Authorization': `Bearer ${userStore.access_token}`},
@@ -151,7 +152,7 @@ export const useBooksStore = defineStore('books', () => {
     return { status: 200, message: "Updated word"}
   }
 
-  async function deleteWord(word: WordSchema): Promise<{ status: number, message: string}> {
+  async function deleteWord(word: WordSchema | null): Promise<{ status: number, message: string}> {
     if (!word) return { status: 404, message: "Word not found" }
     const { error, response } = await client.DELETE('/books/{bid}/words/{wid}', {
       headers: { 'Authorization': `Bearer ${userStore.access_token}`},

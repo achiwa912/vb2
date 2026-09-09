@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { SquarePen, SquareArrowRight, SquareArrowLeft } from '@lucide/vue'
 import { useBooksStore } from '@/stores/books'
@@ -9,11 +9,12 @@ import ToastContainer from '@/components/ToastContainer.vue'
 
 type BookSchema = components['schemas']['BookSchema']
 type WordSchema = components['schemas']['WordSchema']
+type PracDir = components['schemas']['PracDir']
 
 //const alerts = ref([])
-const toastRef = ref(null)
-const modalRef = ref(null)
-const selectedWord = ref(null)
+const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
+const modalRef = ref<HTMLDialogElement | null>(null)
+const selectedWord = ref<WordSchema | null>(null)
 const isNew = ref<boolean>(false)
 const editWord = ref<string>('')
 const editDef = ref<string>('')
@@ -22,14 +23,18 @@ const booksStore = useBooksStore()
 const router = useRouter()
 const bix = booksStore.id2ixBook(booksStore.activeBookId)
 
+const currentBook = computed(() => {
+  if (!bix) return null
+  return booksStore.books[bix]
+})
 
-const openModal = (word) => {
+const openModal = (word: WordSchema | null) => {
   selectedWord.value = word
   if (word != null) {
     isNew.value = false
-    editWord.value = word.word
-    editDef.value = word.definition
-    editSample.value = word.sample
+    editWord.value = word.word ?? ''
+    editDef.value = word.definition ?? ''
+    editSample.value = word.sample ?? ''
   } else {
     isNew.value = true
     editWord.value = ''
@@ -66,15 +71,16 @@ const updateWord = async () => {
 const deleteWord = async () => {
   const resp = await booksStore.deleteWord(selectedWord.value)
   if (resp.status == 200) {
-    toastRef.value?.showAlert(`Deleted word: ${selectedWord.value.word} (id: ${selectedWord.value.id})`, 'success')
+    toastRef.value?.showAlert(`Deleted word: ${selectedWord.value?.word} (id: ${selectedWord.value?.id})`, 'success')
   } else {
-    toastRef.value?.showAlert(`Failed to delete word: ${selectedWord.value.word}. ${resp.message} (${resp.status})`, 'error')
+    toastRef.value?.showAlert(`Failed to delete word: ${selectedWord.value?.word}. ${resp.message} (${resp.status})`, 'error')
   }
   closeModal()
   await booksStore.fetchWords()
 }
 
-function practice(dir) {
+function practice(dir: PracDir | null) {
+  if (!dir) return
   booksStore.pracDir = dir
   router.push('/prac')
 }
@@ -93,7 +99,7 @@ onMounted(async () => {
   <ToastContainer ref="toastRef" />
   
   <div class="p-6">
-    <h1 class="text-3xl font-semibold">{{ booksStore.books[bix].name }}</h1>
+    <h1 class="text-3xl font-semibold">{{ currentBook?.name }}</h1>
 
     <!-- buttons -->
     <div class="flex my-4 gap-2 items-center">
