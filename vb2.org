@@ -1027,3 +1027,7 @@ export CORS_ORIGINS=http://localhost:5173,https://achiwa912.pythonanywhere.com
 # uv pip install python-dotenv  # already installed
 echo 'set -a; source ~/vb2/.env; set +a' >> ~/.virtualenvs/vb2-venv/bin/postactivate
 #+end_src
+
+*** Google Cloud Console
+- Login to GCC > APIs & Services > Credentials > vocabull > add https://achiwa912.pythonanywhere.com
+
