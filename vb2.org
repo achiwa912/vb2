@@ -946,7 +946,6 @@ pwd
 # /home/achiwa912
 ls -la vbs
 rm -rf vbs
-
 #+end_src
 
 *** Build FE locally
@@ -954,3 +953,44 @@ rm -rf vbs
 pnpm install  # already did
 pnpm build
 #+end_src
+- add fe/dist to git
+
+*** Change required python version
+- Change required python version (was >=3.14) in pyproject.toml
+#+begin_src 
+requires-python = ">=3.13"
+#+end_src
+
+#+begin_src 
+uv lock
+git add pyproject.toml uv.lock  # I use magit for these
+git commit -m "Allow Python 3.13"
+git push
+#+end_src
+
+
+*** Update PW system image
+- https://help.pythonanywhere.com/pages/ChangingSystemImage
+- Go to Account > System Image
+  - I'm using =haggis= which supports up to Python 3.10
+  - I need to change it to =innit= which supports 3.13
+  - https://help.pythonanywhere.com/pages/PythonVersions
+- Change current system image to innit
+- Change all default python version to 3.13
+- fresh start
+#+begin_src 
+rm -rf ~/*
+rm -rf ~/.*
+rm -rf /tmp/*
+#+end_src
+- start a new bash console
+
+
+*** at PythonAnywhere
+- git clone vb2 to /home/achiwa912
+#+begin_src 
+git clone https://github.com/achiwa912/vb2.git
+#+end_src
+- setup env
+
+
