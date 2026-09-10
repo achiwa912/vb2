@@ -58,7 +58,10 @@ else:
 
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=14)
-CORS(app, origins=["http://localhost:5173"])
+
+origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+CORS(app, origins=origins)
+# CORS(app, origins=["http://localhost:5173"])
 
 jwt = JWTManager(app)
 db.init_app(app)

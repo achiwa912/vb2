@@ -1017,13 +1017,13 @@ os.chdir(path)
 
 from be.api import app as application
 #+end_src
+- vim .env
+#+begin_src bash
+export SERVE_FRONTEND=1
+export CORS_ORIGINS=http://localhost:5173,https://achiwa912.pythonanywhere.com
+#+end_src
 - 
 #+begin_src bash
-echo "export SERVE_FRONTEND=1" >> .env
 # uv pip install python-dotenv  # already installed
 echo 'set -a; source ~/vb2/.env; set +a' >> ~/.virtualenvs/vb2-venv/bin/postactivate
-#+end_src
-
-#+begin_src 
-
 #+end_src
