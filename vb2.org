@@ -966,7 +966,7 @@ uv lock
 git add pyproject.toml uv.lock  # I use magit for these
 git commit -m "Allow Python 3.13"
 git push
-#+end_src
+#+end_src*
 
 
 *** Update PW system image
@@ -984,13 +984,15 @@ rm -rf ~/.*
 rm -rf /tmp/*
 #+end_src
 - start a new bash console
-
-
-*** at PythonAnywhere
-- git clone vb2 to /home/achiwa912
 #+begin_src 
+cd ~/
+mkvirtualenv vb2-venv
 git clone https://github.com/achiwa912/vb2.git
+# pip install uv  # already there
+cd vb2
+rm README.org # to avoid uv error (.org is not supported)
+uv pip install -e .
+
 #+end_src
-- setup env
 
 
