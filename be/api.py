@@ -456,3 +456,25 @@ def sync_book(path: BookPath, body: SyncBookReq) -> tuple[dict[str, str], int]:
         SyncBookResp(book=b, words=words, practices=practices).model_dump(mode="json"),
         200,
     )
+
+
+# ---------------------------------------------------------------------------
+# Serve the built Vue frontend (production only)
+# ---------------------------------------------------------------------------
+import os as _os
+from flask import send_from_directory
+
+if _os.environ.get("SERVE_FRONTEND") == "1":
+    FRONTEND_DIST = _os.path.join(
+        _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+        "fe",
+        "dist",
+    )
+
+    @app.route("/", defaults={"path": ""})
+    @app.route("/<path:path>")
+    def serve_frontend(path):
+        full = _os.path.join(FRONTEND_DIST, path)
+        if path and _os.path.exists(full):
+            return send_from_directory(FRONTEND_DIST, path)
+        return send_from_directory(FRONTEND_DIST, "index.html")

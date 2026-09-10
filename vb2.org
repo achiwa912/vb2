@@ -991,8 +991,39 @@ git clone https://github.com/achiwa912/vb2.git
 # pip install uv  # already there
 cd vb2
 rm README.org # to avoid uv error (.org is not supported)
-uv pip install -e .
-
+UV_PROJECT_ENVIRONMENT=/home/achiwa912/.virtualenvs/vb2-venv uv sync --no-install-project --python 3.13
 #+end_src
 
+*** create a new webapp
+- delete achiwa912.pythonanywhere.com
+- add a new web app > Manual configuration > Python 3.13
+- Source code: /home/achiwa912/vb2
+- Working directory: /home/achiwa912/vb2
+- Virtualenv: =/home/achiwa912/.virtualenvs/vb2-venv=
+- vim /var/www/achiwa912_pythonanywhere_com_wsgi.py
+#+begin_src python
+import sys
+import os
+from dotenv import load_dotenv
 
+project_folder = os.path.expanduser('~/vb2')
+load_dotenv(os.path.join(project_folder, '.env'))
+
+path = '/home/achiwa912/vb2'
+if path not in sys.path:
+    sys.path.insert(0, path)
+
+os.chdir(path)
+
+from be.api import app as application
+#+end_src
+- 
+#+begin_src bash
+echo "export SERVE_FRONTEND=1" >> .env
+# uv pip install python-dotenv  # already installed
+echo 'set -a; source ~/vb2/.env; set +a' >> ~/.virtualenvs/vb2-venv/bin/postactivate
+#+end_src
+
+#+begin_src 
+
+#+end_src
