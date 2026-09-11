@@ -8,13 +8,11 @@ import ToastContainer from '@/components/ToastContainer.vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/utils'
 import { client } from '@/api/client'
-import { useUserStore } from '@/stores/user'
 
 type BookSchema = components['schemas']['BookSchema']
 
 
 const booksStore = useBooksStore()
-const userStore = useUserStore()
 const router = useRouter()
 const modalRef = ref<HTMLDialogElement | null>(null)
 const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
@@ -79,9 +77,7 @@ const deleteBook = async () => {
 }
 
 async function exportAll() {
-  const { data, error, response } = await client.GET('/export', {
-    // headers: { 'Authorization': `Bearer ${userStore.access_token}`},
-  })
+  const { data, error, response } = await client.GET('/export')
   if (error) {
     if ('message' in error) {
       toastRef.value?.showAlert(`Export failed: ${error.message} (${response.status})`, 'error')
@@ -122,7 +118,6 @@ async function importAll(event: Event) {
     target.value = ''
   }
   const { error, response } = await client.POST('/import', {
-    // headers: { 'Authorization': `Bearer ${userStore.access_token}`},
     body: data,
   })
   if (error) {
