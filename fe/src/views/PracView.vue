@@ -245,9 +245,4 @@ onMounted(async () => {
 
     
   </div>
-  <p>This - {{ currentPrac }}</p>
-  <p>LW: {{ engine.lw }}</p>
-  <p>WW: {{ engine.ww }}</p>
-  <p>wordsNoPrac: {{ booksStore.wordsNoPrac }}</p>
-  <p>isFlipped: {{ engine.isFlipped }}</p>
 </template>
