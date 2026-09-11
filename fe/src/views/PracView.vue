@@ -220,7 +220,7 @@ onMounted(async () => {
 	    </div>
 	    <!-- Action buttons -->
 	    <div class="card-actions grid grid-cols-3 gap-2 w-full">
-	      <button @click.stop="engine.onceMore" class="btn btn-secondary rounded-3xl btn-outline btn-sm sm:btn-lg" :disabled="engine.pracIdx === null"><ThumbsDown />Once More </button>
+	      <button @click.stop="engine.onceMore" class="btn btn-secondary rounded-3xl btn-outline btn-sm sm:btn-lg whitespace-nowrap" :disabled="engine.pracIdx === null"><ThumbsDown />Once More </button>
 	      <button @click.stop="engine.okay" class="btn btn-success rounded-3xl btn-outline btn-sm sm:btn-lg" :disabled="engine.pracIdx === null"><ThumbsUp />Okay</button>
 	      <button @click.stop="engine.memorized" class="btn btn-info rounded-3xl btn-outline btn-sm sm:btn-lg sm:ml-8"  :disabled="engine.pracIdx === null"><SkipForward />Memorized</button>
 	    </div>
