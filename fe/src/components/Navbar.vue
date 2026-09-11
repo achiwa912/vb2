@@ -46,7 +46,7 @@ function goWords() {
           <div @click="goHome" class="w-12 h-8 bg-primary rounded-2xl flex items-center justify-center transition-all group-hover:rotate-12 cursor-pointer">
             <span class="text-white font-bold text-xl">vB</span>
           </div>
-          <span @click="goHome" class="text-2xl font-semibold tracking-tight cursor-pointer">vocaBull</span>
+          <span @click="goHome" class="text-2xl font-semibold tracking-tight cursor-pointer hidden sm:inline">vocaBull</span>
 	  
 	  <!-- Breadcrumbs -->
 	  <div v-if="route.path.includes('/prac')" class="flex items-center text-sm mx-6">
