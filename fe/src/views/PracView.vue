@@ -154,9 +154,9 @@ onMounted(async () => {
     </div>
 
     <!-- info stat -->
-    <div class="card card-lg bg-base-100 border border-base-300 rounded-xl shadow-sm mt-4 mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 " :class="booksStore.pracDir == 'wd' ? 'bg-success text-success-content' : 'bg-info text-info-content'">
-      <div class="card-body py-4">
-	<div class="grid grid-cols-4 gap-4">
+    <div class="card card-lg bg-base-100 border border-base-300 rounded-xl shadow-sm mt-4 mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 " :class="booksStore.pracDir == 'wd' ? 'bg-success text-success-content' : 'bg-info text-info-content'">
+      <div class="card-body py-3 sm:py-4">
+	<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
 	  <div>today: {{ infoMem }}/{{ infoTried }}</div>
 	  <div>remaining: {{ infoRemain }}</div>
 	  <div>due: {{ infoDue }}</div>

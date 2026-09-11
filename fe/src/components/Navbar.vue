@@ -71,7 +71,7 @@ function goWords() {
               {{ userStore.name?.[0] }}
             </div>
             
-            <div class="text-left">
+            <div class="text-left hidden sm:inline">
               <p class="font-medium text-sm leading-none">{{ userStore.name }}</p>
               <p class="text-[10px] text-base-content/60 mt-0.5">{{ userStore.email }}</p>
             </div>
