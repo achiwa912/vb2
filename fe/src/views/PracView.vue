@@ -169,7 +169,7 @@ onMounted(async () => {
     <!-- practice card -->
     <div class="flex items-center justify-center">
 
-      <div v-if="engine.lw.length > 0" class="card card-lg bg-base-100 w-full h-[300px] border border-base-300 rounded-3xl shadow-sm mt-4 mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200">
+      <div v-if="engine.lw.length > 0" class="card card-lg bg-base-100 w-full min-h-[280px] sm:min-h-[300px] border border-base-300 rounded-3xl shadow-sm mt-4 mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200">
 	<!-- Card Header/Body Wrapper -->
 	<div @click="engine.pracIdx !== null && (engine.isFlipped = !engine.isFlipped)" class="card-body flex flex-col justify-between h-full p-4 cursor-pointer">
     
@@ -219,10 +219,10 @@ onMounted(async () => {
 	      <button @click.stop="speakSmpl" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !engine.isFlipped"><Music />Sample</button>
 	    </div>
 	    <!-- Action buttons -->
-	    <div class="card-actions justify-center gap-2">
-	      <button @click.stop="engine.onceMore" class="btn btn-secondary rounded-3xl btn-outline btn-lg" :disabled="engine.pracIdx === null"><ThumbsDown />Once More </button>
-	      <button @click.stop="engine.okay" class="btn btn-success rounded-3xl btn-outline btn-lg" :disabled="engine.pracIdx === null"><ThumbsUp />Okay</button>
-	      <button @click.stop="engine.memorized" class="btn btn-info rounded-3xl btn-outline btn-lg ml-8"  :disabled="engine.pracIdx === null"><SkipForward />Memorized</button>
+	    <div class="card-actions grid grid-cols-3 gap-2 w-full">
+	      <button @click.stop="engine.onceMore" class="btn btn-secondary rounded-3xl btn-outline btn-sm sm:btn-lg" :disabled="engine.pracIdx === null"><ThumbsDown />Once More </button>
+	      <button @click.stop="engine.okay" class="btn btn-success rounded-3xl btn-outline btn-sm sm:btn-lg" :disabled="engine.pracIdx === null"><ThumbsUp />Okay</button>
+	      <button @click.stop="engine.memorized" class="btn btn-info rounded-3xl btn-outline btn-sm sm:btn-lg sm:ml-8"  :disabled="engine.pracIdx === null"><SkipForward />Memorized</button>
 	    </div>
 	  </div>
 
