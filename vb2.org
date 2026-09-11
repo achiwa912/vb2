@@ -977,6 +977,10 @@ git push
   - https://help.pythonanywhere.com/pages/PythonVersions
 - Change current system image to innit
 - Change all default python version to 3.13
+- vim vb2/.python-version
+#+begin_src 
+3.13 # from 3.14
+#+end_src
 - fresh start
 #+begin_src 
 rm -rf ~/*

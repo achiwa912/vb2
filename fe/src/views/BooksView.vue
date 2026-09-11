@@ -80,7 +80,7 @@ const deleteBook = async () => {
 
 async function exportAll() {
   const { data, error, response } = await client.GET('/export', {
-    headers: { 'Authorization': `Bearer ${userStore.access_token}`},
+    // headers: { 'Authorization': `Bearer ${userStore.access_token}`},
   })
   if (error) {
     if ('message' in error) {
@@ -122,7 +122,7 @@ async function importAll(event: Event) {
     target.value = ''
   }
   const { error, response } = await client.POST('/import', {
-    headers: { 'Authorization': `Bearer ${userStore.access_token}`},
+    // headers: { 'Authorization': `Bearer ${userStore.access_token}`},
     body: data,
   })
   if (error) {
