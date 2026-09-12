@@ -50,13 +50,15 @@ vb2 moves all interaction practice logic to the browser (Vue + JavaScript) and o
 ** Progress & persistence
 - Words and progress are stored in a database
 - Explicit /sync with server/ action to reconcile local and remote state
+- Export and import all words and progress to a local file
 
 ** Auth
 - JWT-based sessions
 - Google OAuth sign-in
+  - All you need is a gmail account.  Once signed in, a user account is automatically created in the database.
 
 ** Mobile-friendly UI
-- Optimized for phone-sized screens
+- Optimized for both phone-sized and PC screens (still in progress)
 
 * Tech Stack
 
