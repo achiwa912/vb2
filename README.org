@@ -5,12 +5,7 @@
 
 #+HTML_HEAD: <meta name="viewport" content="width=device-width, initial-scale=1">
 
-vocaBull 2 (vb2)* is a flashcard web app for vocabulary building — a
-modern remake of the original
-[[https://github.com/achiwa912/vbs][vocaBull (vb)]].  It blends the
-frequency-based *Shifting Learning Window (SLW)* method with time-based
-*Spaced Repetition (SRS)* techniques, while deliberately avoiding the
-"due debt hell" that demotivates users of strict SRS apps.
+vocaBull 2 (vb2)* is a flashcard web app for vocabulary building — a modern remake of the original [[https://github.com/achiwa912/vbs][vocaBull (vbs)]].  It blends the frequency-based *Shifting Learning Window (SLW)* method with time-based *Spaced Repetition (SRS)* techniques, while deliberately avoiding the "due debt hell" that demotivates users of strict SRS apps.
 
 * Table of Contents
 :PROPERTIES:
@@ -35,66 +30,55 @@ frequency-based *Shifting Learning Window (SLW)* method with time-based
 
 * Overview
 
-The original vb was built with Flask + Jinja2, which required a full
-server-side HTML render for every flashcard.  On a free PythonAnywhere
-plan this made card transitions painfully slow.
+The original vbs was built with Flask + Jinja2, which required a full server-side HTML render for every flashcard.  On a free PythonAnywhere plan this made card transitions painfully slow.
 
-vb2 moves all interaction logic to the browser (Vue + JavaScript) and
-only talks to the Python backend on initial load and on explicit
-"sync with server" actions.  The result is a snappy, mobile-friendly
-flashcard experience.
+vb2 moves all interaction practice logic to the browser (Vue + JavaScript) and only talks to the Python backend on initial load and on explicit "sync with server" actions.  The result is a snappy, mobile-friendly flashcard experience.
 
 - Status: *alpha*
 
 * Features
 
 ** Flashcard review
-   - Word → meaning, and meaning → spelling practice modes
-   - Instant client-side card transitions (no server round-trip per card)
+- Word → meaning, and meaning → word practice modes
+- Instant client-side card transitions (no server round-trip per card)
 
 ** Hybrid learning method
-   - *Shifting Learning Window (SLW)* — frequency-based repetition for
-     words you are actively learning
-   - *SRS* — time-based scheduling for words you have marked as memorized
-   - *No "due debt"* — skipping days or weeks does not flood you with
-     overdue reviews
+- *Shifting Learning Window (SLW)* — frequency-based repetition for words you are actively learning
+- *SRS* — time-based scheduling for words you have marked as memorized
+- *No "due debt"* — skipping days or weeks does not flood you with overdue reviews
 
 ** Progress & persistence
-   - Words and progress are stored in a database
-   - Explicit /sync with server/ action to reconcile local and remote state
+- Words and progress are stored in a database
+- Explicit /sync with server/ action to reconcile local and remote state
 
 ** Auth
-   - JWT-based sessions
-   - Google OAuth sign-in
+- JWT-based sessions
+- Google OAuth sign-in
 
 ** Mobile-friendly UI
-   - Optimized for phone-sized screens
+- Optimized for phone-sized screens
 
 * Tech Stack
 
-| Layer      | Technology                                     |
-|------------+------------------------------------------------|
-| Backend    | Python 3.13, Flask                             |
-| Frontend   | Vue, JavaScript (built with [[https://pnpm.io][pnpm]])              |
-| Packaging  | [[https://docs.astral.sh/uv/][uv]] (backend), pnpm (frontend)                |
-| Auth       | JWT + Google OAuth                             |
-| Deployment | [[https://www.pythonanywhere.com][PythonAnywhere]] (manual WSGI configuration) |
+| Layer      | Technology                                                     |
+|------------+----------------------------------------------------------------|
+| Backend    | Python 3.13, Flask, Pydantic, SQLAlchemy (sqlite)              |
+| Frontend   | Vue, TypeScript (built with [[https://pnpm.io][pnpm]]), TailwindCSS, DaisyUI, Pinia |
+| Packaging  | [[https://docs.astral.sh/uv/][uv]] (backend), pnpm (frontend)                                  |
+| Auth       | JWT + Google OAuth                                             |
+| Deployment | [[https://www.pythonanywhere.com][PythonAnywhere]] (manual WSGI configuration)                     |
 
 * Live Demo
-
 - *App:* https://achiwa912.pythonanywhere.com
 - Note: running in alpha
 
 * Getting Started
-
 ** Prerequisites
-
 - Python 3.13
 - [[https://docs.astral.sh/uv/][uv]]
 - [[https://nodejs.org][Node.js]] + [[https://pnpm.io][pnpm]]
 
 ** Installation
-
 #+begin_src bash
 git clone https://github.com/achiwa912/vb2.git
 cd vb2
@@ -119,14 +103,12 @@ cd fe && pnpm dev
 #+end_src
 
 To run in "production-like" mode where Flask serves the built frontend:
-
 #+begin_src bash
 cd fe && pnpm build && cd ..
 SERVE_FRONTEND=1 uv run python be/api.py
 #+end_src
 
 * Configuration
-
 Create a =.env= file at the project root:
 
 #+begin_src bash
@@ -147,7 +129,6 @@ If you use Google OAuth, add your deployment URL under
 *Google Cloud Console → APIs & Services → Credentials*.
 
 * Deployment (PythonAnywhere)
-
 A short summary — see the project blog post for the full record.
 
 1. Use the =innit= system image and Python 3.13.
@@ -192,18 +173,12 @@ vb2/
 
 vb2 combines two approaches:
 
-- *Shifting Learning Window (SLW)* — a small high-frequency window
-  (3–5 words) that repeats until you mark a word, then moves it to a
-  waiting window, then to a book.  This is optimized for *frequency*.
-- *Spaced Repetition (SRS)* — once a word is in a book, it reappears on
-  a time-based schedule (1 day, 2 days, 4 days, …).  This is optimized
-  for the *forgetting curve*.
+- *Shifting Learning Window (SLW)* — a small high-frequency window (5 words) that repeats until you mark a word, then moves it to a waiting window, then to a book.  This is optimized for *frequency*.
+- *Spaced Repetition (SRS)* — once a word is in a book, it reappears on a time-based schedule (1 day, 2 days, 4 days, …).  This is optimized for the *forgetting curve*.
 
-Crucially, vb2 uses *relative day counters* rather than absolute due
-dates, so taking a break does not create a backlog.  Work daily and it
-behaves like SRS; skip a month and there is no "due debt hell."
+Crucially, vb2 uses *relative day counters* rather than absolute due dates, so taking a break does not create a backlog.  Work daily and it behaves like SRS; skip a month and there is no "due debt hell."
 
-The goal: a kinder, more lenient alternative to strict SRS apps like Anki.
+The goal: a kinder, more lenient alternative to strict SRS apps.
 
 * Roadmap
 
@@ -213,17 +188,14 @@ The goal: a kinder, more lenient alternative to strict SRS apps like Anki.
 * Related Links
 
 - Original vocaBull repo — https://github.com/achiwa912/vbs
-- Introducing vocaBull — https://achiwa912.github.io/vbs_eng.html
+- Introducing vocaBull (original) — https://achiwa912.github.io/vbs_eng.html
 - Blog post: [[https://blog.achiwa.co.uk/posts/vb2/][vocaBull 2 — a remake of a flashcard web app]]
 - Blog post: [[https://blog.achiwa.co.uk/posts/deployvb2pa/][Deployed vocaBull 2 on PythonAnywhere]]
 
-
 * License
-
 MIT — see [[./LICENSE][LICENSE]].
 
 * Acknowledgements
-
 - Inspired by [[https://apps.ankiweb.net/][Anki]] and the spaced-repetition community
 - Built on Flask, Vue, uv, and pnpm
 - Deployed with [[https://www.pythonanywhere.com/][PythonAnywhere]]
