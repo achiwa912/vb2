@@ -49,7 +49,7 @@ vb2 moves all interaction practice logic to the browser (Vue + JavaScript) and o
 
 ** Progress & persistence
 - Words and progress are stored in a database
-- Explicit /sync with server/ action to reconcile local and remote state
+- Explicit (as well as automatic) /sync with server/ action to reconcile local and remote state
 - Export and import all words and progress to a local file
 
 ** Auth
@@ -62,13 +62,13 @@ vb2 moves all interaction practice logic to the browser (Vue + JavaScript) and o
 
 * Tech Stack
 
-| Layer      | Technology                                                     |
-|------------+----------------------------------------------------------------|
-| Backend    | Python 3.13, Flask, Pydantic, SQLAlchemy (sqlite)              |
-| Frontend   | Vue, TypeScript (built with [[https://pnpm.io][pnpm]]), TailwindCSS, DaisyUI, Pinia |
-| Packaging  | [[https://docs.astral.sh/uv/][uv]] (backend), pnpm (frontend)                                  |
-| Auth       | JWT + Google OAuth                                             |
-| Deployment | [[https://www.pythonanywhere.com][PythonAnywhere]] (manual WSGI configuration)                     |
+| Layer      | Technology                                                       |
+|------------+------------------------------------------------------------------|
+| Backend    | Python 3.13, Flask, Pydantic, SQLAlchemy (sqlite)                |
+| Frontend   | Vue 3, TypeScript (built with [[https://pnpm.io][pnpm]]), TailwindCSS, DaisyUI, Pinia |
+| Packaging  | [[https://docs.astral.sh/uv/][uv]] (backend), pnpm (frontend)                                    |
+| Auth       | JWT + Google OAuth                                               |
+| Deployment | [[https://www.pythonanywhere.com][PythonAnywhere]] (manual WSGI configuration)                       |
 
 * Live Demo
 - *App:* https://achiwa912.pythonanywhere.com
@@ -132,7 +132,9 @@ If you use Google OAuth, add your deployment URL under
 *Google Cloud Console → APIs & Services → Credentials*.
 
 * Deployment (PythonAnywhere)
-A short summary — see the project blog post for the full record.
+Being able to deploy on PythonAnywhere is one of the goals, and because of this, I chose Flask over FastAPI for vb2.
+
+A short summary — see the [[https://blog.achiwa.co.uk/posts/deployvb2pa/][project blog post]] for the full record.
 
 1. Use the =innit= system image and Python 3.13.
 2. Create a virtualenv and clone the repo:
