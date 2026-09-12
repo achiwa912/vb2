@@ -1,5 +1,5 @@
 #+TITLE: vocaBull 2 (vb2)
-#+AUTHOR: achiwa912
+#+AUTHOR: Kyosuke Achiwa
 #+DESCRIPTION: A kinder, more lenient flashcard web app for vocabulary building
 #+KEYWORDS: flashcards, vocabulary, spaced-repetition, SRS, Flask, Vue, PythonAnywhere
 
@@ -96,7 +96,8 @@ In development the frontend is served by Vite and the backend by Flask.
 
 #+begin_src bash
 # Terminal 1 — backend
-uv run python be/api.py
+uv run python -m be.api  # to create initial database
+flask --app be.api:app run --port 8000 --debug
 
 # Terminal 2 — frontend dev server (Vite, default http://localhost:5173)
 cd fe && pnpm dev
@@ -149,8 +150,8 @@ A short summary — see the project blog post for the full record.
 
 4. Build the frontend (=cd fe && pnpm build=) and commit =fe/dist=.
 5. Create a new *manual-configuration* web app in the PA Web tab:
-   - Source / Working directory: =/home/achiwa912/vb2=
-   - Virtualenv: =/home/achiwa912/.virtualenvs/vb2-venv=
+   - Source / Working directory: =/home/<your_account>/vb2=
+   - Virtualenv: =/home/<your_account>/.virtualenvs/vb2-venv=
 6. Point the WSGI file at =be.api:app=, load =.env=, and reload the app.
 
 * Project Structure
@@ -173,10 +174,10 @@ vb2/
 
 vb2 combines two approaches:
 
-- *Shifting Learning Window (SLW)* — a small high-frequency window (5 words) that repeats until you mark a word, then moves it to a waiting window, then to a book.  This is optimized for *frequency*.
+- *Shifting Learning Window (SLW)* — a small high-frequency window (5 words) that repeats until you mark a word, then moves it to a waiting window to show up later (10 or more words), then to 'review'.  This is optimized for *frequency*.
 - *Spaced Repetition (SRS)* — once a word is in a book, it reappears on a time-based schedule (1 day, 2 days, 4 days, …).  This is optimized for the *forgetting curve*.
 
-Crucially, vb2 uses *relative day counters* rather than absolute due dates, so taking a break does not create a backlog.  Work daily and it behaves like SRS; skip a month and there is no "due debt hell."
+Crucially, vb2 uses *relative day counters* rather than absolute due dates, so taking a break does not create a backlog.  Work daily and it behaves like SRS; skip a month and there is no "due debt hell."  That is, practicing the next day or 30 days later would be the same.
 
 The goal: a kinder, more lenient alternative to strict SRS apps.
 
