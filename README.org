@@ -5,10 +5,7 @@
 
 #+HTML_HEAD: <meta name="viewport" content="width=device-width, initial-scale=1">
 
-[[https://achiwa912.pythonanywhere.com][https://img.shields.io/badge/demo-live-brightgreen]]
-[[https://github.com/achiwa912/vb2/blob/main/LICENSE][https://img.shields.io/badge/license-MIT-blue]]
-
-*vocaBull 2 (vb2)* is a flashcard web app for vocabulary building — a
+vocaBull 2 (vb2)* is a flashcard web app for vocabulary building — a
 modern remake of the original
 [[https://github.com/achiwa912/vbs][vocaBull (vb)]].  It blends the
 frequency-based *Shifting Learning Window (SLW)* method with time-based
@@ -47,7 +44,7 @@ only talks to the Python backend on initial load and on explicit
 "sync with server" actions.  The result is a snappy, mobile-friendly
 flashcard experience.
 
-* Status: *alpha* — debug information is currently shown in the UI.
+- Status: *alpha*
 
 * Features
 
@@ -86,7 +83,7 @@ flashcard experience.
 * Live Demo
 
 - *App:* https://achiwa912.pythonanywhere.com
-- Note: running in alpha; debug output is visible.
+- Note: running in alpha
 
 * Getting Started
 
@@ -210,19 +207,16 @@ The goal: a kinder, more lenient alternative to strict SRS apps like Anki.
 
 * Roadmap
 
-- [ ] Stabilize alpha (remove debug output)
-- [ ] Improve sync semantics between local state and server
-- [ ] Expand the book / word-pool model
-- [ ] Additional auth providers
+- [ ] Stabilize alpha
+- [ ] TBD
 
 * Related Links
 
 - Original vocaBull repo — https://github.com/achiwa912/vbs
 - Introducing vocaBull — https://achiwa912.github.io/vbs_eng.html
-- Blog post: /vocaBull 2 — a remake of a flashcard web app/ —
-  https://blog.achiwa.co.uk/posts/vb2/
-- Blog post: /Deployed vocaBull 2 on PythonAnywhere/ —
-  https://blog.achiwa.co.uk/posts/deployvb2pa/
+- Blog post: [[https://blog.achiwa.co.uk/posts/vb2/][vocaBull 2 — a remake of a flashcard web app]]
+- Blog post: [[https://blog.achiwa.co.uk/posts/deployvb2pa/][Deployed vocaBull 2 on PythonAnywhere]]
+
 
 * License
 
@@ -232,4 +226,4 @@ MIT — see [[./LICENSE][LICENSE]].
 
 - Inspired by [[https://apps.ankiweb.net/][Anki]] and the spaced-repetition community
 - Built on Flask, Vue, uv, and pnpm
-- Deployed with PythonAnywhere
+- Deployed with [[https://www.pythonanywhere.com/][PythonAnywhere]]
