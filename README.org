@@ -158,6 +158,25 @@ A short summary — see the [[https://blog.achiwa.co.uk/posts/deployvb2pa/][proj
    - Virtualenv: =/home/<your_account>/.virtualenvs/vb2-venv=
 6. Point the WSGI file at =be.api:app=, load =.env=, and reload the app.
 
+* Tests
+I implemented integration tests for both frontend and backend.  Tests are not exhaustive but are of highest values.
+
+** Frontend SLW and state changes
+- The test file is: vb2/fe/src/lib/pracengine.spec.ts
+- To run:
+#+begin_src 
+cd vb2/fe
+pnpm test
+#+end_src
+
+** Backend API
+- Test files are located at vb2/be/tests
+- To run:
+#+begin_src 
+cd vb2
+uv run pytest
+#+end_src
+
 * Project Structure
 
 #+begin_src
@@ -179,7 +198,7 @@ vb2/
 vb2 combines two approaches:
 
 - *Shifting Learning Window (SLW)* — a small high-frequency window (5 words) that repeats until you mark a word, then moves it to a waiting window to show up later (10 or more words), then to 'review'.  This is optimized for *frequency*.
-- *Spaced Repetition (SRS)* — once a word is in a book, it reappears on a time-based schedule (1 day, 2 days, 4 days, …).  This is optimized for the *forgetting curve*.
+- *Spaced Repetition (SRS)* — once a word is in the 'review' state, it reappears on a time-based schedule (1 day, 2 days, 4 days, …).  This is optimized for the *forgetting curve*.
 
 Crucially, vb2 uses *relative day counters* rather than absolute due dates, so taking a break does not create a backlog.  Work daily and it behaves like SRS; skip a month and there is no "due debt hell."  That is, practicing the next day or 30 days later would be the same.
 
