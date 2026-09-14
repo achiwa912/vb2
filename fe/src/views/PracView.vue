@@ -364,7 +364,7 @@ onUnmounted(() => {
               </div>
 
               <!-- Back Content -->
-              <div v-else key="back" class="flex flex-col items-center justify-center space-y-4 overflow-y-auto max-h-[220px] px-2">
+              <div v-else key="back" class="flex flex-col items-center justify-center space-y-4 overflow-y-auto max-h-[220px] px-2 touch-none select-none">
 		<h1 class="text-2xl sm:text-3xl font-bold text-center">{{ currentWord?.word }}</h1>
           
 		<p class="text-lg opacity-80 text-center">
