@@ -170,6 +170,11 @@ function onAction(action: 'onceMore' | 'okay') {
   }, EXIT_MS)
 }
 
+const ghostEnter = computed(() => prefersReducedMotion.value ? {} : {
+  'enter-active-class': 'transition-opacity duration-200 ease-out',
+  'enter-from-class': 'opacity-0',
+})
+
 // ====== TTS ==============================================
 
 const speakWord = () => {
@@ -296,16 +301,35 @@ onUnmounted(() => {
     <div class="relative flex items-center justify-center mt-6">
 
       <!-- ghost cards -->
-      <div
-	v-if="engine.lw.length > 2"
-	      class="absolute inset-y-0 left-3 right-3 sm:left-8 sm:right-8 md:left-16 md:right-16 rounded-3xl border border-base-300 bg-base-200 pointer-events-none z-10"
-	      style="transform-origin: top center; transform: translateY(-16px) scale(0.98); opacity: 0.4;"
-      ></div>
-      <div
-	v-if="engine.lw.length > 1"
-	class="absolute inset-y-0 left-3 right-3 sm:left-8 sm:right-8 md:left-16 md:right-16 rounded-3xl border border-base-300 bg-base-200 pointer-events-none z-20"
-	style="transform-origin: top center; transform: translateY(-8px) scale(0.99); opacity: 0.7;"
-      ></div>
+      <Transition v-bind="ghostEnter"
+		  enter-active-class="transition-opacity duration-200 ease-out"
+		  enter-from-class="opacity-0"
+		  enter-to-class="opacity-40"
+		  leave-active-class="transition-opacity duration-200 ease-in"
+		  leave-from-class="opacity-40"
+		  leave-to-class="opacity-0"
+      >
+	<div
+	  v-if="engine.lw.length > 2"
+	  class="absolute inset-y-0 left-3 right-3 sm:left-8 sm:right-8 md:left-16 md:right-16 rounded-3xl border border-base-300 bg-base-200 pointer-events-none z-10 opacity-40"
+	  style="transform-origin: top center; transform: translateY(-16px) scale(0.98);"
+	></div>
+      </Transition>
+
+      <Transition v-bind="ghostEnter"
+		  enter-active-class="transition-opacity duration-200 ease-out"
+		  enter-from-class="opacity-0"
+		  enter-to-class="opacity-70"
+		  leave-active-class="transition-opacity duration-200 ease-in"
+		  leave-from-class="opacity-70"
+		  leave-to-class="opacity-0"
+      >
+	<div
+	  v-if="engine.lw.length > 1"
+	  class="absolute inset-y-0 left-3 right-3 sm:left-8 sm:right-8 md:left-16 md:right-16 rounded-3xl border border-base-300 bg-base-200 pointer-events-none z-20 opacity-70"
+	  style="transform-origin: top center; transform: translateY(-8px) scale(0.99);"
+	></div>
+      </Transition>
 
       <!-- active card -->
       <div v-if="engine.lw.length > 0" :key="engine.pracIdx ?? -1" class="card card-lg bg-base-100 w-full min-h-[280px] sm:min-h-[300px] border border-base-300 rounded-3xl shadow-sm mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 relative z-30" :style="cardStyle" @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerCancel">
