@@ -14,7 +14,7 @@ const prefersReducedMotion = ref(false)
 const voices = ref<SpeechSynthesisVoice[]>([]) // for TTS
 
 let mq: MediaQueryList | null = null
-const onMqChange = (e: MediaQueryLlistEvent) => { prefersReducedMotion.value = e.matches }
+const onMqChange = (e: MediaQueryListEvent) => { prefersReducedMotion.value = e.matches }
 
 const infoMem = computed(() => engine.infoMem)
 const infoTried = computed(() => engine.infoTried)
@@ -223,7 +223,7 @@ onUnmounted(() => {
 	style="transform-origin: top center; transform: translateY(-8px) scale(0.99); opacity: 0.7;"
       ></div>
 
-      <div v-if="engine.lw.length > 0" :key="engine.pracIdx" class="card card-lg bg-base-100 w-full min-h-[280px] sm:min-h-[300px] border border-base-300 rounded-3xl shadow-sm mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 relative z-30" :style="exitStyle">
+      <div v-if="engine.lw.length > 0" :key="engine.pracIdx ?? -1" class="card card-lg bg-base-100 w-full min-h-[280px] sm:min-h-[300px] border border-base-300 rounded-3xl shadow-sm mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 relative z-30" :style="exitStyle">
 	<!-- Card Header/Body Wrapper -->
 	<div @click="engine.pracIdx !== null && (engine.isFlipped = !engine.isFlipped)" class="card-body flex flex-col justify-between h-full p-4 cursor-pointer">
     
