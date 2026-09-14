@@ -11,6 +11,13 @@ const booksStore = useBooksStore()
 const engine = reactive(new PracEngine(booksStore))
 const exitDir = ref<'left' | 'right' | null>(null)
 const prefersReducedMotion = ref(false)
+const dragX = ref(0)
+const dragY = ref(0)
+const dragging = ref(false)
+
+let pointerId: number | null = null
+let startX = 0
+let startY = 0
 const voices = ref<SpeechSynthesisVoice[]>([]) // for TTS
 
 let mq: MediaQueryList | null = null
@@ -55,21 +62,98 @@ async function manualSync() {
 // ====== animation ========================================
 
 const EXIT_MS = 180
+const SWIPE_THRESHOLD = 100
+const TAP_THRESHOLD = 8
+const ROTATION_DIVISOR = 20
 
-const exitStyle = computed(() => {
+const cardStyle = computed(() => {
   const base: Record<string, string> = {
-    transition:
-      `transform ${EXIT_MS}ms ease-out, opacity ${EXIT_MS}ms ease-out, box-shadow 200ms ease, border-color 200ms ease`,
+    'touch-action': 'pan-y',
+    'will-change': 'transform',
   }
-  if (exitDir.value === 'right') {
-    base.transform = 'translateX(140%) rotate(15deg)'
-    base.opacity = '0'
-  } else if (exitDir.value === 'left') {
-    base.transform = 'translateX(-140%) rotate(-15deg)'
-    base.opacity = '0'
+  const restTransition =
+    `transform ${EXIT_MS}ms ease-out, opacity ${EXIT_MS}ms ease-out, ` +
+    'box-shadow 200ms ease, border-color 200ms ease'
+
+  if (exitDir.value) {
+    return {
+      ...base,
+      transition: restTransition,
+      transform: exitDir.value === 'right'
+        ? 'translateX(140%) rotate(15deg)'
+        : 'translateX(-140%) rotate(-15deg)',
+      opacity: '0',
+    }
   }
-  return base
+  if (dragging.value) {
+    return {
+      ...base,
+      transition: 'none',
+      transform:
+        `translateX(${dragX.value}px) translateY(${dragY.value}px) ` +
+        `rotate(${dragX.value / ROTATION_DIVISOR}deg)`,
+    }
+  }
+  return { ...base, transition: restTransition }
 })
+
+function onPointerDown(e: PointerEvent) {
+  if (exitDir.value !== null) return
+  if (e.pointerType === 'mouse' && e.button !== 0) return
+  const target = e.target as HTMLElement
+  if (target.closest('button, [data-no-flip]')) return
+
+  pointerId = e.pointerId
+  startX = e.clientX
+  startY = e.clientY
+  dragX.value = 0
+  dragY.value = 0
+  dragging.value = false
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (pointerId !== e.pointerId) return
+  const dx = e.clientX - startX
+  const dy = e.clientY - startY
+  if (!dragging.value && Math.hypot(dx, dy) > TAP_THRESHOLD) {
+    dragging.value = true
+  }
+  if (dragging.value) {
+    dragX.value = dx
+    dragY.value = dy
+  }
+}
+
+function onPointerUp(e: PointerEvent) {
+  if (pointerId !== e.pointerId) return
+  const wasDragging = dragging.value
+  const dx = dragX.value
+  const el = e.currentTarget as HTMLElement
+
+  pointerId = null
+  if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId)
+  dragging.value = false
+  dragX.value = 0
+  dragY.value = 0
+
+  if (wasDragging) {
+    if (Math.abs(dx) >= SWIPE_THRESHOLD) {
+      onAction(dx > 0 ? 'okay' : 'onceMore')
+    }
+    // else: card springs back to center (transition from cardStyle's rest branch)
+  } else {
+    if (engine.pracIdx !== null) engine.isFlipped = !engine.isFlipped
+  }
+}
+
+function onPointerCancel(e: PointerEvent) {
+  if (pointerId !== e.pointerId) return
+  pointerId = null
+  dragging.value = false
+  dragX.value = 0
+  dragY.value = 0
+}
 
 function onAction(action: 'onceMore' | 'okay') {
   if (exitDir.value !== null) return
@@ -223,9 +307,10 @@ onUnmounted(() => {
 	style="transform-origin: top center; transform: translateY(-8px) scale(0.99); opacity: 0.7;"
       ></div>
 
-      <div v-if="engine.lw.length > 0" :key="engine.pracIdx ?? -1" class="card card-lg bg-base-100 w-full min-h-[280px] sm:min-h-[300px] border border-base-300 rounded-3xl shadow-sm mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 relative z-30" :style="exitStyle">
+      <!-- active card -->
+      <div v-if="engine.lw.length > 0" :key="engine.pracIdx ?? -1" class="card card-lg bg-base-100 w-full min-h-[280px] sm:min-h-[300px] border border-base-300 rounded-3xl shadow-sm mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 relative z-30" :style="cardStyle" @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerCancel">
 	<!-- Card Header/Body Wrapper -->
-	<div @click="engine.pracIdx !== null && (engine.isFlipped = !engine.isFlipped)" class="card-body flex flex-col justify-between h-full p-4 cursor-pointer">
+	<div class="card-body flex flex-col justify-between h-full p-4 cursor-pointer">
     
 	  <div 
 	    class="flex-1 flex flex-col justify-center"
@@ -267,7 +352,7 @@ onUnmounted(() => {
 	  <!-- Static Action Buttons -->
 	  <div class="flex flex-col items-center gap-3 pt-2">
 	    <!-- TTS -->
-	    <div class="flex justify-center gap-2 mb-3" @click.stop>
+	    <div class="flex justify-center gap-2 mb-3" data-no-flap>
 	      <button @click.stop="speakWord" class="btn btn-sm btn-success text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!engine.isFlipped && booksStore.pracDir !== 'wd')"><Music2 />Word</button>
 	      <button @click.stop="speakDef" class="btn btn-sm btn-error text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!engine.isFlipped && booksStore.pracDir !== 'dw')"><Music3 />Definition</button>
 	      <button @click.stop="speakSmpl" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !engine.isFlipped"><Music />Sample</button>
