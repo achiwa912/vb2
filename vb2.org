@@ -1037,3 +1037,134 @@ echo 'set -a; source ~/vb2/.env; set +a' >> ~/.virtualenvs/vb2-venv/bin/postacti
 *** Google Cloud Console
 - Login to GCC > APIs & Services > Credentials > vocabull > add https://achiwa912.pythonanywhere.com
 
+
+** Make cards swipable (on mobile)
+- use Vue transition
+- Context (9/14)
+#+begin_src 
+CONTEXT FOR CONTINUATION \u2014 vb2 Flashcard App Mobile UI
+
+## Project
+- Repo: https://github.com/achiwa912/vb2 (frontend in `fe/`)
+- Stack: Vue 3 + Vite + TypeScript + Tailwind CSS v4 + DaisyUI 5 (theme: bumblebee)
+- Deployed on PythonAnywhere at https://achiwa912.pythonanywhere.com
+- Backend serves SPA from `~/vb2/fe/dist`; static mapping:
+    /assets/  ->  /home/achiwa912/vb2/fe/dist/assets
+    /         ->  /home/achiwa912/vb2/fe/dist
+- `fe/src/style.css` contains only:
+    @import "tailwindcss";
+    @plugin "daisyui" { themes: bumblebee, light, dark; }
+- No tailwind.config.js (v4 doesn't need one).
+- `App.vue` is just `<RouterView />` \u2014 no shared layout shell.
+
+## Goal
+Make the app usable on mobile (currently designed desktop-first, looks bad
+on small screens).
+
+## Already fixed
+1. Navbar.vue \u2014 "vocaBull" text hidden on mobile (`hidden sm:inline`),
+   logo (vB) still shown.
+2. PracView.vue \u2014 stat card made responsive: `mx-3 sm:mx-8 md:mx-16`,
+   `grid-cols-2 sm:grid-cols-4`, label/value split into stacked spans on
+   mobile, `text-sm sm:text-base`.
+3. PracView.vue \u2014 practice card wrapper: `mx-16` -> `mx-3 sm:mx-8 md:mx-16`,
+   `h-[300px]` -> `min-h-[280px] sm:min-h-[300px]`.
+4. PracView.vue \u2014 action buttons: container changed from
+   `flex justify-center gap-2` to `grid grid-cols-3 gap-2 w-full`;
+   buttons `btn-lg` -> `btn-sm sm:btn-lg`; `ml-8` on Memorized ->
+   `sm:ml-8`.
+5. Resolved a stale-build blank-page issue (index.html referenced old
+   asset hashes; rebuilt and re-deployed).
+
+## Currently in progress
+Mobile UI polish, working through PracView.vue issues one at a time.
+
+### Just completed
+- "Once More" button was wrapping to 2 lines on mobile. Decided the fix
+  but NOT yet applied: use `<span class="sm:hidden">More</span>` +
+  `<span class="hidden sm:inline">Once More</span>` inside the button
+  (same pattern for Okay -> "OK", Memorized -> "Done" if needed).
+  PENDING: user needs to confirm/apply this change.
+
+### Next major feature: Level 1 card stack
+User wants a Tinder-style card stack on PracView:
+- Active card on top; 1 blank ghost card behind it (no text content in ghost)
+- Vertical offset for ghost (translateY upward)
+- Ghost is purely decorative \u2014 blank card shape, dimmed
+- Promotion animation via Option A: rely on Vue reactivity + CSS transition
+  (ghosts are stateless, always rendered from current engine state; when the
+  engine index changes, Vue re-renders and CSS transitions handle the
+  promotion automatically \u2014 no manual timing coordination)
+- Later: swipe gestures (right = engine.okay(), left = engine.onceMore()),
+  tap = flip. Pointer Events API, `touch-action: pan-y` on card.
+- Swipe threshold ~100px; tap threshold ~8px; rotation = dx/20 degrees.
+
+## Card stack plan (agreed, not yet started)
+Step 1 (next): Add 2 absolutely-positioned ghost divs behind the active
+  card in PracView.vue. No gestures, no animation yet. Values:
+    ghost 1: translateY(-8px)  scale(0.95)  opacity 0.7  z-index 2
+    ghost 2: translateY(-16px) scale(0.90)  opacity 0.4  z-index 1
+    active:  normal flow, z-index 3
+  Container becomes `relative`; ghosts use `absolute inset-0` +
+  `pointer-events-none`; container `mt-6` instead of `mt-4`.
+  Ghost bg: `bg-base-200` (dial to `bg-base-300` if not visible).
+Step 2: Add `hasNext` boolean to PracEngine so ghosts render conditionally.
+Step 3: Fly-off animation on swipe release past threshold (swipe.exitDir
+  state, transitionend to sequence engine advance).
+Step 4: Verify ghost promotion looks smooth on real phone.
+Step 5: Fade out ghosts when deck is empty (empty state transition).
+Step 6: Add swipe gesture handlers (pointerdown/move/up) + tap-to-flip
+  with movement threshold.
+
+## Design decisions locked in
+- Ghost cards: blank (no real content) \u2014 keeps Step 1-2 simple
+- Vertical offset (not horizontal)
+- Option A for ghost promotion (reactive, no TransitionGroup)
+- Memorized button stays tap-only (no swipe gesture)
+- Keep Okay/Once More/Memorized buttons visible as accessibility fallback
+- Respect prefers-reduced-motion (instant swap for those users)
+- Pointer events (not separate mouse/touch listeners)
+
+## Reference links the user has
+- https://motion.dev/examples/vue-card-stack
+- https://ruixen.com/components/customer-story-stack
+- https://fwdtools.com/ui-snippets/swipe-cards/
+- MDN: Pointer events, touch-action, transform, perspective,
+  prefers-reduced-motion
+- Vue docs: <Transition>, transition hooks, explicit durations
+
+## Immediate next action
+User is about to paste the CURRENT PracView.vue practice-card block (from
+`<!-- practice card -->` through the empty-state closing div). Next
+assistant should provide the Step 1 replacement code (ghost cards, no
+gestures/animation yet) that drops in cleanly against the pasted code.
+#+end_src
+
+*** Step 1 show ghost cards (incl. step 2)
+- add relative and z-<number> to active card
+- ghost cards will have the same shape as outer div, smaller z-<num>
+#+begin_src html
+    <!-- practice card -->
+    <div class="relative flex items-center justify-center mt-6">
+
+      <!-- ghost cards -->
+      <div
+	v-if="engine.lw.length > 2"
+	      class="absolute inset-y-0 left-3 right-3 sm:left-8 sm:right-8 md:left-16 md:right-16 rounded-3xl border border-base-300 bg-base-200 pointer-events-none z-10"
+	      style="transform-origin: top center; transform: translateY(-16px) scale(0.98); opacity: 0.4;"
+      ></div>
+      <div
+	v-if="engine.lw.length > 1"
+	class="absolute inset-y-0 left-3 right-3 sm:left-8 sm:right-8 md:left-16 md:right-16 rounded-3xl border border-base-300 bg-base-200 pointer-events-none z-20"
+	style="transform-origin: top center; transform: translateY(-8px) scale(0.99); opacity: 0.7;"
+      ></div>
+
+      <div v-if="engine.lw.length > 0" class="card card-lg bg-base-100 w-full min-h-[280px] sm:min-h-[300px] border border-base-300 rounded-3xl shadow-sm mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 relative z-30">
+#+end_src
+- don't need hasNext it's just lw.length =0, >0 (active only), >1 (one ghost), >2 (2 ghost)
+
+*** step 3 fly-off animation w/ existing buttons
+- define exitStyle (animation none or flying off right/left) and set to active card
+- define action handler (onAction) and assign to Once More and Okay buttons
+
+*** step 4 

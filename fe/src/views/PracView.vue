@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, reactive, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { PracEngine } from '@/lib/pracengine'
@@ -9,11 +9,15 @@ import Navbar from '@/components/Navbar.vue'
 
 const booksStore = useBooksStore()
 const engine = reactive(new PracEngine(booksStore))
+const exitDir = ref<'left' | 'right' | null>(null)
+const prefersReducedMotion = ref(false)
 const voices = ref<SpeechSynthesisVoice[]>([]) // for TTS
+
+let mq: MediaQueryList | null = null
+const onMqChange = (e: MediaQueryLlistEvent) => { prefersReducedMotion.value = e.matches }
 
 const infoMem = computed(() => engine.infoMem)
 const infoTried = computed(() => engine.infoTried)
-//const isFlipped = computed(() => engine.isFlipped)
 
 const infoDue = computed(() => engine.getInfoDue())
 const infoRemain = computed(() => engine.getInfoRemain())
@@ -47,6 +51,40 @@ async function manualSync() {
 //   engine.isFlipped = false
 // })
 
+
+// ====== animation ========================================
+
+const EXIT_MS = 180
+
+const exitStyle = computed(() => {
+  const base: Record<string, string> = {
+    transition:
+      `transform ${EXIT_MS}ms ease-out, opacity ${EXIT_MS}ms ease-out, box-shadow 200ms ease, border-color 200ms ease`,
+  }
+  if (exitDir.value === 'right') {
+    base.transform = 'translateX(140%) rotate(15deg)'
+    base.opacity = '0'
+  } else if (exitDir.value === 'left') {
+    base.transform = 'translateX(-140%) rotate(-15deg)'
+    base.opacity = '0'
+  }
+  return base
+})
+
+function onAction(action: 'onceMore' | 'okay') {
+  if (exitDir.value !== null) return
+  if (prefersReducedMotion.value) {
+    if (action === 'onceMore') engine.onceMore()
+    else engine.okay()
+    return
+  }
+  exitDir.value = action === 'onceMore' ? 'left' : 'right'
+  window.setTimeout(() => {
+    exitDir.value = null
+    if (action === 'onceMore') engine.onceMore()
+    else engine.okay()
+  }, EXIT_MS)
+}
 
 // ====== TTS ==============================================
 
@@ -128,14 +166,18 @@ onBeforeRouteLeave(async () => {
 
 onMounted(async () => {
   engine.resetWindows()
-  //lw.value = []
-  //ww.value = []
+  mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+  prefersReducedMotion.value = mq.matches
+  mq.addEventListener('change', onMqChange)
   loadVoices()
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = loadVoices
   }
   await booksStore.syncServer()
   await engine.doPrac()
+})
+onUnmounted(() => {
+  mq?.removeEventListener('change', onMqChange)
 })
 
 </script>
@@ -167,9 +209,21 @@ onMounted(async () => {
 
     
     <!-- practice card -->
-    <div class="flex items-center justify-center">
+    <div class="relative flex items-center justify-center mt-6">
 
-      <div v-if="engine.lw.length > 0" class="card card-lg bg-base-100 w-full min-h-[280px] sm:min-h-[300px] border border-base-300 rounded-3xl shadow-sm mt-4 mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200">
+      <!-- ghost cards -->
+      <div
+	v-if="engine.lw.length > 2"
+	      class="absolute inset-y-0 left-3 right-3 sm:left-8 sm:right-8 md:left-16 md:right-16 rounded-3xl border border-base-300 bg-base-200 pointer-events-none z-10"
+	      style="transform-origin: top center; transform: translateY(-16px) scale(0.98); opacity: 0.4;"
+      ></div>
+      <div
+	v-if="engine.lw.length > 1"
+	class="absolute inset-y-0 left-3 right-3 sm:left-8 sm:right-8 md:left-16 md:right-16 rounded-3xl border border-base-300 bg-base-200 pointer-events-none z-20"
+	style="transform-origin: top center; transform: translateY(-8px) scale(0.99); opacity: 0.7;"
+      ></div>
+
+      <div v-if="engine.lw.length > 0" :key="engine.pracIdx" class="card card-lg bg-base-100 w-full min-h-[280px] sm:min-h-[300px] border border-base-300 rounded-3xl shadow-sm mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 relative z-30" :style="exitStyle">
 	<!-- Card Header/Body Wrapper -->
 	<div @click="engine.pracIdx !== null && (engine.isFlipped = !engine.isFlipped)" class="card-body flex flex-col justify-between h-full p-4 cursor-pointer">
     
@@ -187,17 +241,17 @@ onMounted(async () => {
 	    >
               <!-- Front Content -->
               <div v-if="!engine.isFlipped" key="front" class="flex flex-col items-center justify-center space-y-4">
-		<h1 v-if="booksStore.pracDir == 'wd'" class="text-4xl font-bold text-center">
+		<h1 v-if="booksStore.pracDir == 'wd'" class="text-2xl sm:text-4xl font-bold text-center">
 		  {{ currentWord?.word }}
 		</h1>
-		<h1 v-else class="text-4xl font-bold text-center">
+		<h1 v-else class="text-2xl sm:text-3xl font-bold text-center">
 		  {{ currentWord?.definition }}
 		</h1>
               </div>
 
               <!-- Back Content -->
               <div v-else key="back" class="flex flex-col items-center justify-center space-y-4 overflow-y-auto max-h-[220px] px-2">
-		<h1 class="text-3xl font-bold text-center">{{ currentWord?.word }}</h1>
+		<h1 class="text-2xl sm:text-3xl font-bold text-center">{{ currentWord?.word }}</h1>
           
 		<p class="text-lg opacity-80 text-center">
 		  {{ currentWord?.definition }}
@@ -218,10 +272,11 @@ onMounted(async () => {
 	      <button @click.stop="speakDef" class="btn btn-sm btn-error text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!engine.isFlipped && booksStore.pracDir !== 'dw')"><Music3 />Definition</button>
 	      <button @click.stop="speakSmpl" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !engine.isFlipped"><Music />Sample</button>
 	    </div>
+	    
 	    <!-- Action buttons -->
 	    <div class="card-actions grid grid-cols-3 gap-2 w-full">
-	      <button @click.stop="engine.onceMore" class="btn btn-secondary rounded-3xl btn-outline btn-sm sm:btn-lg whitespace-nowrap" :disabled="engine.pracIdx === null"><ThumbsDown />Once More </button>
-	      <button @click.stop="engine.okay" class="btn btn-success rounded-3xl btn-outline btn-sm sm:btn-lg" :disabled="engine.pracIdx === null"><ThumbsUp />Okay</button>
+	      <button @click.stop="onAction('onceMore')" class="btn btn-secondary rounded-3xl btn-outline btn-sm sm:btn-lg whitespace-nowrap" :disabled="engine.pracIdx === null"><ThumbsDown />Once More </button>
+	      <button @click.stop="onAction('okay')" class="btn btn-success rounded-3xl btn-outline btn-sm sm:btn-lg" :disabled="engine.pracIdx === null"><ThumbsUp />Okay</button>
 	      <button @click.stop="engine.memorized" class="btn btn-info rounded-3xl btn-outline btn-sm sm:btn-lg sm:ml-8"  :disabled="engine.pracIdx === null"><SkipForward />Memorized</button>
 	    </div>
 	  </div>
