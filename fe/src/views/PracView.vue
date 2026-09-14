@@ -90,7 +90,7 @@ const cardStyle = computed(() => {
       ...base,
       transition: 'none',
       transform:
-        `translateX(${dragX.value}px) translateY(${dragY.value}px) ` +
+        `translateX(${dragX.value}px)` +
         `rotate(${dragX.value / ROTATION_DIVISOR}deg)`,
     }
   }
