@@ -100,16 +100,21 @@ const cardStyle = computed(() => {
 function onPointerDown(e: PointerEvent) {
   if (exitDir.value !== null) return
   if (e.pointerType === 'mouse' && e.button !== 0) return
-  const target = e.target as HTMLElement
-  if (target.closest('button, [data-no-flip]')) return
+  
+  const target = e.target as HTMLElement | null
+  if (target?.closest('button, [data-no-flip]')) return
 
+  const container = e.currentTarget as HTMLElement
   pointerId = e.pointerId
   startX = e.clientX
   startY = e.clientY
   dragX.value = 0
   dragY.value = 0
   dragging.value = false
-  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+
+  if (container.setPointerCapture) {
+    container.setPointerCapture(e.pointerId)
+  }
 }
 
 function onPointerMove(e: PointerEvent) {
@@ -376,7 +381,7 @@ onUnmounted(() => {
 	  <!-- Static Action Buttons -->
 	  <div class="flex flex-col items-center gap-3 pt-2">
 	    <!-- TTS -->
-	    <div class="flex justify-center gap-2 mb-3" data-no-flap>
+	    <div class="flex justify-center gap-2 mb-3" data-no-flip>
 	      <button @click.stop="speakWord" class="btn btn-sm btn-success text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!engine.isFlipped && booksStore.pracDir !== 'wd')"><Music2 />Word</button>
 	      <button @click.stop="speakDef" class="btn btn-sm btn-error text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!engine.isFlipped && booksStore.pracDir !== 'dw')"><Music3 />Definition</button>
 	      <button @click.stop="speakSmpl" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !engine.isFlipped"><Music />Sample</button>

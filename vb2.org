@@ -1140,7 +1140,7 @@ assistant should provide the Step 1 replacement code (ghost cards, no
 gestures/animation yet) that drops in cleanly against the pasted code.
 #+end_src
 
-*** Step 1 show ghost cards (incl. step 2)
+*** show ghost cards
 - add relative and z-<number> to active card
 - ghost cards will have the same shape as outer div, smaller z-<num>
 #+begin_src html
@@ -1163,8 +1163,11 @@ gestures/animation yet) that drops in cleanly against the pasted code.
 #+end_src
 - don't need hasNext it's just lw.length =0, >0 (active only), >1 (one ghost), >2 (2 ghost)
 
-*** step 3 fly-off animation w/ existing buttons
+*** fly-off animation w/ existing buttons
 - define exitStyle (animation none or flying off right/left) and set to active card
 - define action handler (onAction) and assign to Once More and Okay buttons
 
-*** step 4 
+*** swipe
+- changed exitStyle to cardStyle
+
+
