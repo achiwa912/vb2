@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, reactive, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, reactive, watch, nextTick } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { PracEngine } from '@/lib/pracengine'
-import { ThumbsUp, ThumbsDown, SkipForward, Music, Music2, Music3, RefreshCw } from '@lucide/vue'
+import { ThumbsUp, ThumbsDown, SkipForward, Music, Music2, Music3, RefreshCw, Check, X } from '@lucide/vue'
 import type { components } from '@/types/api'
 import Navbar from '@/components/Navbar.vue'
 
@@ -18,6 +18,7 @@ const dragging = ref(false)
 let pointerId: number | null = null
 let startX = 0
 let startY = 0
+const isAutoplay = ref(false)
 const voices = ref<SpeechSynthesisVoice[]>([]) // for TTS
 
 let mq: MediaQueryList | null = null
@@ -46,7 +47,11 @@ const currentPrac = computed(() => {
   return booksStore.pracs[engine.lw[0]] ?? null
 })
 
-const flipCard = () => { engine.isFlipped = !engine.isFlipped }
+const flipCard = () => {
+  engine.isFlipped = !engine.isFlipped
+  if (!isAutoplay.value) return
+  engine.isFlipped ? speakRest() : speakFront()
+}
 
 async function manualSync() {
   engine.resetWindows()
@@ -148,7 +153,10 @@ function onPointerUp(e: PointerEvent) {
     }
     // else: card springs back to center (transition from cardStyle's rest branch)
   } else {
-    if (engine.pracIdx !== null) engine.isFlipped = !engine.isFlipped
+    if (engine.pracIdx !== null) {
+      //engine.isFlipped = !engine.isFlipped
+      flipCard()
+    }
   }
 }
 
@@ -182,19 +190,27 @@ const ghostEnter = computed(() => prefersReducedMotion.value ? {} : {
 
 // ====== TTS ==============================================
 
-const speakWord = () => {
-  if (currentWord.value?.word) {
-    speakTts(currentWord.value.word)
+const speakFront = () => {
+  if (booksStore.pracDir !== 'dw') {
+    if (currentWord.value?.word) {
+      speakTts(currentWord.value.word)
+    }
+  } else {
+    if (currentWord.value?.definition) {
+      speakTts(currentWord.value.definition)
+    }
   }
 }
-const speakDef = () => {
-  if (currentWord.value?.definition) {
-    speakTts(currentWord.value.definition)
+
+const speakRest = () => {
+  let sentence = ''
+  if (booksStore.pracDir !== 'dw') {
+    sentence = currentWord.value?.definition + '; ' + currentWord.value?.sample
+  } else {
+    sentence = currentWord.value?.word + '; ' + currentWord.value?.sample
   }
-}
-const speakSmpl = () => {
-  if (currentWord.value?.sample) {
-    speakTts(currentWord.value.sample)
+  if (sentence) {
+    speakTts(sentence)
   }
 }
 
@@ -203,55 +219,63 @@ const loadVoices = () => {
   voices.value = window.speechSynthesis.getVoices()
 }
 
+let speakTimer: number | null = null
+
 const speakTts = (txt: string) => {
   if (!('speechSynthesis' in window) || !txt) return
-
-  window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(txt)
-
-  utterance.lang = 'en-US'
-  utterance.rate = 1.1
-
-  // Female voices explicitly matched from your system list
-  const preferredFemaleVoices = [
-    // macOS / iOS
-    'Karen',  // US or neutral
-    'Samantha', // US
-    'Tessa', // UK
-    //+++'Sandy (English (US))',
-    //+++'Kathy', 
-    //+++'Flo (English (US))',
-    
-    // Windows / Edge
-    'Microsoft Zira',
-    'Microsoft Jenny Online (Natural) - English (United States)',
-    'Microsoft Aria Online (Natural) - English (United States)',
-
-    // Android / Chrome
-    'Google US English'
-  ]
+  if (speakTimer !== null) window.clearTimeout(speakTimer)
   
-  // Get current voices array dynamically
-  const availableVoices = voices.value.length > 0 
-					      ? voices.value 
-					      : window.speechSynthesis.getVoices()
+  window.speechSynthesis.cancel()
 
-  // Match exact name string first
-  const bestVoice = availableVoices.find(v => 
-    preferredFemaleVoices.includes(v.name)
-  ) || availableVoices.find(v => 
-    preferredFemaleVoices.some(p => v.name.includes(p))
-  )
+  // Defer the speak() to the next macrotask so Chromium doesn't drop it
+  // when it follows cancel() in the same tick.
+  speakTimer = window.setTimeout(() => {
+    speakTimer = null
+    const utterance = new SpeechSynthesisUtterance(txt)
+    utterance.lang = 'en-US'
+    utterance.rate = 1.1
 
-  if (bestVoice) {
-    utterance.voice = bestVoice
-    //console.log('Using female voice:', bestVoice.name)
-  } else {
-    console.warn('No preferred female voice matched, using browser default.')
-  }
+    const preferredFemaleVoices = [
+      'Karen', 'Samantha', 'Tessa',
+      'Microsoft Zira',
+      'Microsoft Jenny Online (Natural) - English (United States)',
+      'Microsoft Aria Online (Natural) - English (United States)',
+      'Google US English',
+    ]
 
-  window.speechSynthesis.speak(utterance)
+    const availableVoices = voices.value.length > 0
+						? voices.value
+						: window.speechSynthesis.getVoices()
+
+    const bestVoice =
+      availableVoices.find(v => preferredFemaleVoices.includes(v.name)) ||
+      availableVoices.find(v => preferredFemaleVoices.some(p => v.name.includes(p)))
+
+    if (bestVoice) utterance.voice = bestVoice
+    else console.warn('[speakTts] no preferred voice matched, voices=', availableVoices.map(v => v.name))
+
+    window.speechSynthesis.speak(utterance)
+  }, 80)
 }
+
+// 1. When a new card is loaded, reset flip and speak the front (if autoplay on)
+watch(() => engine.pracIdx, async (id) => {
+  if (id == null) return
+  engine.isFlipped = false
+  if (!isAutoplay.value) return
+  await nextTick()
+  speakFront()
+})
+
+// 2. When the user toggles autoplay ON, immediately speak the current front
+watch(isAutoplay, (on) => {
+  if (!on) {
+    window.speechSynthesis?.cancel()
+    return
+  }
+  if (engine.pracIdx == null) return
+  engine.isFlipped ? speakRest() : speakFront()
+})
 
 onBeforeRouteLeave(async () => {
   engine.isFlipped = false
@@ -284,19 +308,20 @@ onUnmounted(() => {
   
   <div>
     <!-- Title -->
-    <div class="flex mt-4 mx-4 items-end">
+    <div class="flex mt-4 mx-4 items-end gap-1">
       <h1 class="text-3xl font-semibold">Practice</h1>
-      <div class="text-base-content/50 ml-4">{{ booksStore.pracDir == 'wd' ? 'Word to Definition' : 'Definiton to Word' }}</div>
+      <div class="text-base-content/50 ml-3">{{ booksStore.pracDir == 'wd' ? 'Word to Definition' : 'Definiton to Word' }}</div>
+      <input type="checkbox" class="toggle ml-2" v-model="isAutoplay" />
+      <div>Autoplay</div>
     </div>
 
-    <!-- info stat -->
+    <!-- info stats -->
     <div class="card card-lg bg-base-100 border border-base-300 rounded-xl shadow-sm mt-4 mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 " :class="booksStore.pracDir == 'wd' ? 'bg-success text-success-content' : 'bg-info text-info-content'">
       <div class="card-body py-3 sm:py-4">
-	<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-	  <div>today: {{ infoMem }}/{{ infoTried }}</div>
-	  <div>remaining: {{ infoRemain }}</div>
-	  <div>due: {{ infoDue }}</div>
-	  <div>due within 3 days: {{ infoWithin3 }}</div>
+	<div class="grid grid-cols-3 gap-4">
+	  <div class="flex items-center gap-1"><Check />{{ infoMem }} <X />{{ infoTried }}</div>
+	  <div>{{ infoRemain }} left</div>
+	  <div>{{ infoWithin3 }} coming up</div>
 	</div>
       </div>
     </div>
@@ -338,9 +363,19 @@ onUnmounted(() => {
 
       <!-- active card -->
       <div v-if="engine.lw.length > 0" :key="engine.pracIdx ?? -1" class="card card-lg bg-base-100 w-full min-h-[280px] sm:min-h-[300px] border border-base-300 rounded-3xl shadow-sm mx-3 sm:mx-8 md:mx-16 select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 relative z-30" :style="cardStyle" @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerCancel">
+
 	<!-- Card Header/Body Wrapper -->
 	<div class="card-body flex flex-col justify-between h-full p-4 cursor-pointer">
-    
+
+	  <!-- Buttons -->
+	  <div class="flex flex-col items-center gap-3 pt-2">
+	    <!-- TTS -->
+	    <div class="flex justify-center gap-2 mb-3" data-no-flip>
+	      <button @click.stop="speakFront" class="btn btn-sm btn-success text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null"><Music3 />Front</button>
+	      <button @click.stop="speakRest" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !engine.isFlipped"><Music />Rest</button>
+	    </div>
+	  </div>
+	  
 	  <div 
 	    class="flex-1 flex flex-col justify-center"
 	  >
@@ -380,13 +415,6 @@ onUnmounted(() => {
 
 	  <!-- Static Action Buttons -->
 	  <div class="flex flex-col items-center gap-3 pt-2">
-	    <!-- TTS -->
-	    <div class="flex justify-center gap-2 mb-3" data-no-flip>
-	      <button @click.stop="speakWord" class="btn btn-sm btn-success text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!engine.isFlipped && booksStore.pracDir !== 'wd')"><Music2 />Word</button>
-	      <button @click.stop="speakDef" class="btn btn-sm btn-error text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || (!engine.isFlipped && booksStore.pracDir !== 'dw')"><Music3 />Definition</button>
-	      <button @click.stop="speakSmpl" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !engine.isFlipped"><Music />Sample</button>
-	    </div>
-	    
 	    <!-- Action buttons -->
 	    <div class="card-actions grid grid-cols-3 gap-2 w-full">
 	      <button @click.stop="onAction('onceMore')" class="btn btn-secondary rounded-3xl btn-outline btn-sm sm:btn-lg whitespace-nowrap" :disabled="engine.pracIdx === null"><ThumbsDown />Once More </button>

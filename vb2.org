@@ -1171,3 +1171,38 @@ gestures/animation yet) that drops in cleanly against the pasted code.
 - changed exitStyle to cardStyle
 
 
+** backlog
+*** redesign card layout
+- voice play buttons
+  - now: 3 - word, def, sample -> to: 2
+    - 'front' - what is on front (eg, word)
+    - 'answer' - the rest (eg, def & sample; disabled if front is shown)
+  - move voice play buttons on top of cards
+
+*** autoplay
+- Have a toggle switch on prac view (initially disabled, not persisted)
+- Toggling it enables autoplay, and play the current card (front or back)
+- front - plays what is on front
+- back - plays the rest (word, definition, sample minus what is on front)
+- flipping card (can be many times) or moving to the next card triggers play
+
+*** keyboard shortcut
+- h, <- - once more
+- j, (lower arrow) - memorized
+- k, (upper arrow), space - flip card
+- l, -> - okay
+- n - play front
+- m - play answer
+- A - toggle auto-play
+- Esc - words view (Esc again \to books view)
+- (U - undo)
+
+*** improve stats
+**** prac
+- now: (1) this session correct/not, (2) remaining today, (3) due today, (4) due within 3 days
+- then: (1) v (correct) x (not) (2) <num> left (3) <num> coming up
+**** words
+- 
+**** books
+
+*** undo
