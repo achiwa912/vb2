@@ -7,7 +7,7 @@ import type { components } from '@/types/api'
 import Navbar from '@/components/Navbar.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 
-type BookSchema = components['schemas']['BookSchema']
+//type BookSchema = components['schemas']['BookSchema']
 type WordSchema = components['schemas']['WordSchema']
 type PracDir = components['schemas']['PracDir']
 
@@ -26,6 +26,83 @@ const bix = booksStore.id2ixBook(booksStore.activeBookId)
 const currentBook = computed(() => {
   if (!bix) return null
   return booksStore.books[bix]
+})
+
+const numMasteredWd = computed(() => {
+  if (!bix) return null
+  let cnt = 0
+  for (const prac of booksStore.pracs) {
+    if (prac.direction == 'wd' && prac.status == 'review' && prac.due_dates && prac.due_dates >= 10) {
+      cnt += 1
+    }
+  }
+  return cnt ?? 0
+})
+
+const numMasteredDw = computed(() => {
+  if (!bix) return 0
+  let cnt = 0
+  for (const prac of booksStore.pracs) {
+    if (prac.direction == 'dw' && prac.status == 'review' && prac.due_dates && prac.due_dates >= 10) {
+      cnt += 1
+    }
+  }
+  return cnt ?? 0
+})
+
+const numReviewWd = computed(() => {
+  if (!bix) return 0
+  let cnt = 0
+  for (const prac of booksStore.pracs) {
+    if (prac.direction == 'wd' && prac.status == 'review') {
+      cnt += 1
+    }
+  }
+  return cnt ?? 0
+})
+
+const numReviewDw = computed(() => {
+  if (!bix) return 0
+  let cnt = 0
+  for (const prac of booksStore.pracs) {
+    if (prac.direction == 'dw' && prac.status == 'review') {
+      cnt += 1
+    }
+  }
+  return cnt ?? 0
+})
+
+const numLearning = computed((dir) => {
+  if (!bix) return 0
+  let cnt = 0
+  for (const prac of booksStore.pracs) {
+    if (prac.direction == dir && (prac.status == 'learning' || prac.status == 'waiting')) {
+      cnt += 1
+    }
+  }
+  return cnt ?? 0
+})
+
+const numLearningWd = computed(() => {
+  if (!bix) return 0
+  let cnt = 0
+  for (const prac of booksStore.pracs) {
+    if (prac.direction == 'wd' && (prac.status == 'learning' || prac.status == 'waiting')) {
+      cnt += 1
+    }
+  }
+  return cnt ?? 0
+})
+
+const numLearningDw = computed(() => {
+  if (!bix) return 0
+  let cnt = 0
+  for (const prac of booksStore.pracs) {
+    if (prac.direction == 'dw' && (prac.status == 'learning' || prac.status == 'waiting')) {
+      cnt += 1
+    }
+  }
+  return cnt ?? 0
 })
 
 const openModal = (word: WordSchema | null) => {
@@ -88,7 +165,8 @@ function practice(dir: PracDir | null) {
 onMounted(async () => {
   booksStore.words = []
   booksStore.pracs = []
-  await booksStore.fetchWords()
+  // await booksStore.fetchWords()
+  await booksStore.syncBook()
 })
 </script>
 
@@ -108,6 +186,54 @@ onMounted(async () => {
     <button @click="openModal(null)" class="btn btn-secondary btn-outline btn-sm rounded-3xl ml-4">Add word</button>
     </div>
 
+     <!-- info stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mx-3 mt-4">
+
+      <div class="card card-lg bg-base-100 border border-base-300 rounded-xl shadow-sm select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 bg-success text-success-content">
+	<div class="card-body py-3 sm:py-4">
+
+	  <div class="flex items-center gap-3 mb-1">
+	    <span class="whitespace-nowrap font-medium text-sm">
+              {{ numMasteredWd ?? 0 }} mastered
+	    </span>
+	    <progress 
+              class="progress progress-accent flex-1 h-2" 
+              :value="numMasteredWd ?? 0" 
+              :max="booksStore.words.length || 1">
+	    </progress>
+	  </div>
+	  
+	  <div class="grid grid-cols-3 gap-4">
+            <div>{{ numReviewWd ?? 0 }} review</div>
+            <div>{{ numLearningWd ?? 0}} learn</div>
+            <div>{{ booksStore.words.length - numReviewWd - numLearningWd }} new</div>
+	  </div>
+	</div>
+      </div>
+
+      <div class="card card-lg bg-base-100 border border-base-300 rounded-xl shadow-sm select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 bg-info text-info-content">
+	<div class="card-body py-3 sm:py-4">
+
+	  <div class="flex items-center gap-3 mb-1">
+	    <span class="whitespace-nowrap font-medium text-sm">
+              {{ numMasteredDw ?? 0 }} mastered
+	    </span>
+	    <progress 
+              class="progress progress-accent flex-1 h-2" 
+              :value="numMasteredDw ?? 0" 
+              :max="booksStore.words.length || 1">
+	    </progress>
+	  </div>
+	  
+	  <div class="grid grid-cols-3 gap-4">
+            <div>{{ numReviewDw ?? 0 }} review</div>
+            <div>{{ numLearningDw ?? 0}} learn</div>
+            <div>{{ booksStore.words.length - numReviewDw - numLearningDw }} new</div>
+	  </div>
+	</div>
+      </div>
+
+    </div>
     
     <!-- cards -->
     <div v-for="([idx, word]) in booksStore.words.entries()" :key="idx">

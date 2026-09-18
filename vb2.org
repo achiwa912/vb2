@@ -1172,14 +1172,14 @@ gestures/animation yet) that drops in cleanly against the pasted code.
 
 
 ** backlog
-*** redesign card layout
+*** <DONE> redesign card layout
 - voice play buttons
   - now: 3 - word, def, sample -> to: 2
     - 'front' - what is on front (eg, word)
     - 'answer' - the rest (eg, def & sample; disabled if front is shown)
   - move voice play buttons on top of cards
 
-*** autoplay
+*** <DONE> autoplay
 - Have a toggle switch on prac view (initially disabled, not persisted)
 - Toggling it enables autoplay, and play the current card (front or back)
 - front - plays what is on front
@@ -1198,11 +1198,45 @@ gestures/animation yet) that drops in cleanly against the pasted code.
 - (U - undo)
 
 *** improve stats
-**** prac
+**** <DONE> prac
 - now: (1) this session correct/not, (2) remaining today, (3) due today, (4) due within 3 days
-- then: (1) v (correct) x (not) (2) <num> left (3) <num> coming up
-**** words
-- 
-**** books
+- then: (1) v (correct) x (not) (2) <num> left (3) +<num> coming up
+**** words view
+- mastery: due_dates >= 8 (&& status=='review')
+- bar mastery / all
+- num review, num learning+waiting, num no pracs+new for W2D and D2W
+**** books view
+- aggregate all books
+- num books
+- num review, num learning+waiting, num no pracs+new for W2D and D2W
+**** practice history (books view)
+- github-like heatmap
+- practiced days in past 2 weeks
+**** hardest word list (words view)
+- need to add ok(okay&memorized) and ng(once more) counters to Practice DB table
+**** db changes
+- need History table
+  - date # GMT; duration 24 hours
+  - book_id
+  - direction
+  - ok_counter
+  - ng_counter
+- add columns to Practice table
+  - ok_counter
+  - ng_counter
+
+#+begin_src 
+I'd like to show a github-like heatmap which shows activities of past 2 weeks, and lists of challenging words (eg, num of total once mores) for each book.
+I think I need a new table, something like Session, Sync or (daily practice) History.  Either way, I'd like to be able to aggregate how many okays and once mores I had in each day.  The problem is, though sync can send ok/once_more counters, the numbers I currently have are not reset (at frontend) until the session ends.  Also, multiple devices could sync.
+#+end_src
+
+*** offline mode
+- If you are in words view or prac view, and book.words and book.pracs are loaded, you can practice the book offline
+- To do so, I need to sync book when user enters a words view.  Currently, only book.words are loaded.
 
 *** undo
+
+*** bug
+- Book name (the same one) isn't shown on the words view title
+- browser tab name is Vite App
+- if lw.length == 1, autoplay doesn't play

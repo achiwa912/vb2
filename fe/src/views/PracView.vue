@@ -321,7 +321,7 @@ onUnmounted(() => {
 	<div class="grid grid-cols-3 gap-4">
 	  <div class="flex items-center gap-1"><Check />{{ infoMem }} <X />{{ infoTried }}</div>
 	  <div>{{ infoRemain }} left</div>
-	  <div>{{ infoWithin3 }} coming up</div>
+	  <div>+{{ infoWithin3 }} coming up</div>
 	</div>
       </div>
     </div>
@@ -427,19 +427,17 @@ onUnmounted(() => {
       </div>
 
       <!-- Nothing to learn -->
-<div v-else class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center">
-  <div class="text-5xl">🎉</div>
-  <h3 class="text-xl font-semibold text-base-content">
-    No items to practice today
-  </h3>
-  <p class="text-base-content/70">
-    Way to go!
-  </p>
-</div>
+      <div v-else class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center">
+	<div class="text-5xl">🎉</div>
+	<h3 class="text-xl font-semibold text-base-content">
+	  No items to practice today
+	</h3>
+	<p class="text-base-content/70">
+	  Way to go!
+	</p>
+      </div>
 
     </div>
-
-
     
   </div>
 </template>
