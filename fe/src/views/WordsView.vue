@@ -177,21 +177,19 @@ onMounted(async () => {
   <ToastContainer ref="toastRef" />
   
   <div class="p-6">
-    <h1 class="text-3xl font-semibold">{{ currentBook?.name }}</h1>
-
-    <!-- buttons -->
-    <div class="flex my-4 gap-2 items-center">
-    <button @click="practice('wd')" class="btn btn-success rounded-3xl"><SquareArrowRight />Word to def</button>
-    <button @click="practice('dw')" class="btn btn-info rounded-3xl"><SquareArrowLeft />Def to word</button>
-    <button @click="openModal(null)" class="btn btn-secondary btn-outline btn-sm rounded-3xl ml-4">Add word</button>
+    <div class="flex items-center">
+      <h1 class="text-3xl font-semibold">{{ currentBook?.name }}</h1>
+      <button @click="openModal(null)" class="btn btn-secondary btn-outline btn-sm rounded-3xl ml-4">Add word</button>
     </div>
 
      <!-- info stats -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mx-3 mt-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mx-1 mt-4">
 
-      <div class="card card-lg bg-base-100 border border-base-300 rounded-xl shadow-sm select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 bg-success text-success-content">
+      <div @click="practice('wd')" class="card card-lg bg-base-100 border border-base-300 rounded-3xl shadow-sm select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 bg-success/80 text-success-content cursor-pointer">
 	<div class="card-body py-3 sm:py-4">
 
+	  <div class="flex gap-1 mb-2"><SquareArrowRight />Word to definition</div>
+	  
 	  <div class="flex items-center gap-3 mb-1">
 	    <span class="whitespace-nowrap font-medium text-sm">
               {{ numMasteredWd ?? 0 }} mastered
@@ -211,8 +209,10 @@ onMounted(async () => {
 	</div>
       </div>
 
-      <div class="card card-lg bg-base-100 border border-base-300 rounded-xl shadow-sm select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 bg-info text-info-content">
+      <div @click="practice('dw')" class="card card-lg bg-base-100 border border-base-300 rounded-3xl shadow-sm select-none flex flex-col justify-between hover:border-base-content/24 hover:shadow-xl transition-all duration-200 bg-info/80 text-info-content cursor-pointer">
 	<div class="card-body py-3 sm:py-4">
+
+	  <div class="flex gap-1 mb-2"><SquareArrowLeft />Definition to word</div>
 
 	  <div class="flex items-center gap-3 mb-1">
 	    <span class="whitespace-nowrap font-medium text-sm">
