@@ -3,11 +3,17 @@ import { ref, onMounted, onUnmounted, computed, reactive, watch, nextTick } from
 import { onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { PracEngine } from '@/lib/pracengine'
-import { ThumbsUp, ThumbsDown, SkipForward, Music, Music2, Music3, RefreshCw, Check, X } from '@lucide/vue'
+import { ThumbsUp, ThumbsDown, SkipForward, Music, Music2, Music3, RefreshCw, Check, X, SquarePen } from '@lucide/vue'
 import type { components } from '@/types/api'
 import Navbar from '@/components/Navbar.vue'
+import ToastContainer from '@/components/ToastContainer.vue'
 
 const booksStore = useBooksStore()
+const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
+const modalRef = ref<HTMLDialogElement | null>(null)
+const editWord = ref<string>('')
+const editDef = ref<string>('')
+const editSample = ref<string>('')
 const engine = reactive(new PracEngine(booksStore))
 const exitDir = ref<'left' | 'right' | null>(null)
 const prefersReducedMotion = ref(false)
@@ -63,6 +69,47 @@ async function manualSync() {
 //   engine.isFlipped = false
 // })
 
+// ====== edit word ========================================
+
+const openModal = () => {
+  console.log('!')
+  editWord.value = currentWord.value?.word ?? ''
+  editDef.value = currentWord.value?.definition ?? ''
+  editSample.value = currentWord.value?.sample ?? ''
+  modalRef.value?.showModal()
+}
+
+const closeModal = () => {
+  modalRef.value?.close()
+}
+
+const updateWord = async () => {
+  const resp = await booksStore.editWord(editWord.value, editDef.value, editSample.value, currentWord.value?.book_id ?? 0, currentWord.value?.id ?? 0)
+  if (resp.status == 200) {
+    toastRef.value?.showAlert(`Updated word: ${editWord.value} (id: ${currentWord.value?.id})`, 'success')
+  } else {
+    toastRef.value?.showAlert(`Failed updating word: ${currentWord.value?.word}. ${resp.message} (${resp.status})`, 'error')
+  }
+  closeModal()
+  await booksStore.syncBook()
+  await engine.doPrac()
+}
+
+const deleteWord = async () => {
+  const resp = await booksStore.deleteWord(currentWord.value)
+  if (resp.status == 200) {
+    toastRef.value?.showAlert(`Deleted word: ${currentWord.value?.word} (id: ${currentWord.value?.id})`, 'success')
+    booksStore.pracs.splice(engine.pracIdx ?? 99999, 1) // delete the prac
+    engine.resetWindows()
+  } else {
+    toastRef.value?.showAlert(`Failed to delete word: ${currentWord.value?.word}. ${resp.message} (${resp.status})`, 'error')
+  }
+  closeModal()
+  await booksStore.syncBook()
+  await engine.doPrac()
+}
+
+
 
 // ====== animation ========================================
 
@@ -80,16 +127,16 @@ const cardStyle = computed(() => {
     `transform ${EXIT_MS}ms ease-out, opacity ${EXIT_MS}ms ease-out, ` +
     'box-shadow 200ms ease, border-color 200ms ease'
 
-  if (exitDir.value) {
-    return {
-      ...base,
-      transition: restTransition,
-      transform: exitDir.value === 'right'
-        ? 'translateX(140%) rotate(15deg)'
-        : 'translateX(-140%) rotate(-15deg)',
-      opacity: '0',
+    if (exitDir.value) {
+      return {
+	...base,
+	transition: restTransition,
+	transform: exitDir.value === 'right'
+		 ? 'translateX(140%) rotate(15deg)'
+		 : 'translateX(-140%) rotate(-15deg)',
+	opacity: '0',
+      }
     }
-  }
   if (dragging.value) {
     return {
       ...base,
@@ -368,12 +415,15 @@ onUnmounted(() => {
 	<div class="card-body flex flex-col justify-between h-full p-4 cursor-pointer">
 
 	  <!-- Buttons -->
-	  <div class="flex flex-col items-center gap-3 pt-2">
+	  <div class="relative flex items-center justify-center pt-2">
 	    <!-- TTS -->
-	    <div class="flex justify-center gap-2 mb-3" data-no-flip>
+	    <div class="flex justify-center gap-2" data-no-flip>
 	      <button @click.stop="speakFront" class="btn btn-sm btn-success text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null"><Music3 />Front</button>
 	      <button @click.stop="speakRest" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !engine.isFlipped"><Music />Rest</button>
 	    </div>
+	    <button @click.stop="openModal" class="btn btn-primary btn-sm rounded-2xl absolute right-0">
+	      <SquarePen class="size-4" />Edit
+	    </button>
 	  </div>
 	  
 	  <div 
@@ -440,4 +490,103 @@ onUnmounted(() => {
     </div>
     
   </div>
+
+  <!-- word add/edit modal -->
+  <dialog ref="modalRef" class="modal modal-bottom sm:modal-middle backdrop:backdrop-blur-sm transition-all duration-300">
+    <div class="modal-box p-6 max-w-lg rounded-2xl border border-base-200/60 shadow-xl bg-base-100/95 backdrop-blur-md">
+    
+      <!-- Header with Close Button -->
+      <div class="flex items-center justify-between pb-4 mb-6 border-b border-base-200">
+	<div>
+          <h3 class="text-xl font-bold tracking-tight text-base-content">
+            {{ 'Edit Word' }}
+          </h3>
+          <p class="text-xs text-base-content/60 mt-0.5">
+            {{ 'Make changes to your existing word.' }}
+          </p>
+	</div>
+	<button 
+          type="button" 
+          class="btn btn-sm btn-circle btn-ghost text-base-content/50 hover:text-base-content" 
+          @click="closeModal"
+          aria-label="Close modal"
+	>
+          ✕
+	</button>
+      </div>
+
+      <!-- Form Fields -->
+      <form @submit.prevent="updateWord" class="space-y-4">
+	<!-- Word Input -->
+	<div class="form-control w-full">
+          <label class="label py-1">
+            <span class="label-text font-medium text-xs uppercase tracking-wider text-base-content/70">Word</span>
+          </label>
+          <input 
+            v-model="editWord" 
+            type="text" 
+            placeholder="e.g. Serendipity" 
+            class="input input-bordered w-full rounded-xl focus:input-primary transition-all duration-200" 
+            required 
+          />
+	</div>
+
+	<!-- Definition Input -->
+	<div class="form-control w-full">
+          <label class="label py-1">
+            <span class="label-text font-medium text-xs uppercase tracking-wider text-base-content/70">Definition</span>
+          </label>
+          <textarea 
+            v-model="editDef" 
+            placeholder="e.g. The occurrence of events by chance in a happy way." 
+            class="textarea textarea-bordered w-full h-20 rounded-xl focus:textarea-primary transition-all duration-200 resize-none" 
+            required
+          ></textarea>
+	</div>
+      
+	<!-- Sample Sentence Input -->
+	<div class="form-control w-full">
+          <label class="label py-1">
+            <span class="label-text font-medium text-xs uppercase tracking-wider text-base-content/70">Sample Sentence</span>
+          </label>
+          <input 
+            v-model="editSample" 
+            type="text" 
+            placeholder="e.g. Finding that cozy cafe was pure serendipity." 
+            class="input input-bordered w-full rounded-xl focus:input-primary transition-all duration-200" 
+          />
+	</div>
+	
+	<!-- Action Footer -->
+	<div class="pt-4 mt-6 border-t border-base-200 flex items-center justify-between gap-3">
+          <!-- Delete action on the left to prevent accidental clicks -->
+          <div>
+            <button 
+              type="button" 
+              class="btn btn-error btn-ghost text-error hover:bg-error/10 rounded-xl transition-colors" 
+              @click="deleteWord"
+            >
+              Delete
+            </button>
+          </div>
+	  
+          <div class="flex items-center gap-2">
+            <button type="button" class="btn btn-ghost rounded-xl" @click="closeModal">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary rounded-xl px-6">
+              {{ 'Save Changes' }}
+            </button>
+          </div>
+	</div>
+      </form>
+      
+    </div>
+    
+    <!-- Backdrop click to close trigger -->
+    <form method="dialog" class="modal-backdrop">
+      <button @click="closeModal">close</button>
+    </form>
+  </dialog>  
+  
 </template>

@@ -1186,22 +1186,11 @@ gestures/animation yet) that drops in cleanly against the pasted code.
 - back - plays the rest (word, definition, sample minus what is on front)
 - flipping card (can be many times) or moving to the next card triggers play
 
-*** keyboard shortcut
-- h, <- - once more
-- j, (lower arrow) - memorized
-- k, (upper arrow), space - flip card
-- l, -> - okay
-- n - play front
-- m - play answer
-- A - toggle auto-play
-- Esc - words view (Esc again \to books view)
-- (U - undo)
-
 *** improve stats
 **** <DONE> prac
 - now: (1) this session correct/not, (2) remaining today, (3) due today, (4) due within 3 days
 - then: (1) v (correct) x (not) (2) <num> left (3) +<num> coming up
-**** words view
+**** <DONE> words view
 - mastery: due_dates >= 8 (&& status=='review')
 - bar mastery / all
 - num review, num learning+waiting, num no pracs+new for W2D and D2W
@@ -1230,11 +1219,28 @@ I'd like to show a github-like heatmap which shows activities of past 2 weeks, a
 I think I need a new table, something like Session, Sync or (daily practice) History.  Either way, I'd like to be able to aggregate how many okays and once mores I had in each day.  The problem is, though sync can send ok/once_more counters, the numbers I currently have are not reset (at frontend) until the session ends.  Also, multiple devices could sync.
 #+end_src
 
-*** offline mode
+*** <DONE> offline mode
 - If you are in words view or prac view, and book.words and book.pracs are loaded, you can practice the book offline
 - To do so, I need to sync book when user enters a words view.  Currently, only book.words are loaded.
 
 *** undo
+
+*** add edit word on PracView
+
+*** CSV import
+
+*** keyboard shortcut
+- h, <- - once more
+- j, (lower arrow) - memorized
+- k, (upper arrow), space - flip card
+- l, -> - okay
+- n - play front
+- m - play answer
+- A - toggle auto-play
+- Esc - words view (Esc again \to books view)
+- (U - undo)
+
+
 
 *** bug
 - Book name (the same one) isn't shown on the words view title
