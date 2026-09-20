@@ -237,7 +237,7 @@ onMounted(async () => {
     
     <!-- cards -->
     <div v-for="([idx, word]) in booksStore.words.entries()" :key="idx">
-      <div class="card card-border bg-base-100 w-192 mt-4 hover:bg-base-200 border border-base-300 rounded-3xl px-6 transition-all duration-300 hover:shadow-xl flex">
+      <div class="card card-lg card-border bg-base-100  mt-4 hover:bg-base-200 border border-base-300 rounded-3xl px-6 transition-all duration-300 hover:shadow-xl flex">
 
 	<!-- Outer row: items-center vertically centers the index with the content on the right -->
 	<div class="flex items-center gap-3 py-4">
