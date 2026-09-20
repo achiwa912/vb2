@@ -23,6 +23,17 @@ export interface PracEngineOptions {
   now?: () => Date
 }
 
+interface UndoState {
+  infoTried: number
+  infoMem: number
+  isFlipped: boolean
+  lw: number[]
+  ww: number[]
+  pracIdx: number | null
+  praclw0: PracticeSchema
+  pracww0: PracticeSchema | null
+}
+
 export class PracEngine {
   lw: number[]
   ww: number[]
@@ -30,6 +41,7 @@ export class PracEngine {
   infoTried: number
   infoMem: number
   isFlipped: boolean
+  undoArray: UndoState[]
   
   private store: PracStoreLike
   private lwsize: number
@@ -50,9 +62,11 @@ export class PracEngine {
     this.infoTried = 0
     this.infoMem = 0
     this.isFlipped = false
+    this.undoArray = []
   }
 
   resetWindows() {
+    this.undoArray = []
     this.lw = []
     this.ww = []
     this.pracIdx = null
@@ -190,6 +204,7 @@ export class PracEngine {
   }
 
   async onceMore() {
+    this.saveUndo()
     this.infoTried++
     this.isFlipped = false
     const idx = this.lw.shift() ?? null
@@ -203,6 +218,7 @@ export class PracEngine {
   }
 
   async memorized() {
+    this.saveUndo()
     this.infoTried++
     this.infoMem++
     this.isFlipped = false
@@ -225,6 +241,7 @@ export class PracEngine {
   }
 
   async okay() {
+    this.saveUndo()
     this.infoTried++
     this.infoMem++
     this.isFlipped = false
@@ -297,5 +314,33 @@ export class PracEngine {
       ).length
     )
   }
-  
+
+  saveUndo() {
+    const elem: UndoState = {
+      "infoTried": this.infoTried,
+      "infoMem": this.infoMem,
+      "isFlipped": this.isFlipped,
+      "lw": [...this.lw],
+      "ww": [...this.ww],
+      "pracIdx": this.pracIdx,
+      "praclw0": {...this.store.pracs[this.lw[0]!]!},
+      "pracww0": this.ww[0] ? {...this.store.pracs[this.ww[0]]!} : null
+    }
+    this.undoArray.push(elem)
+  }
+
+  undo() {
+    if (!this.undoArray) return
+    const elem: UndoState = this.undoArray.pop()!
+    this.infoTried = elem.infoTried
+    this.infoMem = elem.infoMem
+    this.isFlipped = elem.isFlipped
+    this.lw = [...elem.lw]
+    this.ww = [...elem.ww]
+    this.pracIdx = elem.pracIdx
+    this.store.pracs[this.lw[0]!] = {...elem.praclw0}
+    if (this.ww[0] && elem.pracww0) {
+      this.store.pracs[this.ww[0]] = {...elem.pracww0}
+    }
+  }
 }

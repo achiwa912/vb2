@@ -1224,8 +1224,12 @@ I think I need a new table, something like Session, Sync or (daily practice) His
 - To do so, I need to sync book when user enters a words view.  Currently, only book.words are loaded.
 
 *** undo
+- infoTried, infoMem, isFlipped, lw, ww, pracIdx
+- prev pracs[lw[0]], new pracs[lw[lw.length-1]]
+  - -> all prev pracs[lw[0]], pracs[ww[0]]
+- if resetWindows in doPrac, clear snapshot array for guard
 
-*** add edit word on PracView
+*** <DONE> add edit word on PracView
 
 *** CSV import
 

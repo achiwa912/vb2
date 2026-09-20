@@ -421,9 +421,15 @@ onUnmounted(() => {
 	      <button @click.stop="speakFront" class="btn btn-sm btn-success text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null"><Music3 />Front</button>
 	      <button @click.stop="speakRest" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !engine.isFlipped"><Music />Rest</button>
 	    </div>
-	    <button @click.stop="openModal" class="btn btn-primary btn-sm rounded-2xl absolute right-0">
-	      <SquarePen class="size-4" />Edit
-	    </button>
+	    <div class="flex justify-center gap-3 absolute right-0">
+	      <button @click.stop="openModal" class="btn btn-primary btn-sm rounded-2xl">
+		<SquarePen class="size-4" />
+	      </button>
+	      <button @click.stop="engine.undo" class="btn btn-primary btn-sm rounded-3xl" :disabled="!engine.undoArray.length">
+		<RefreshCw class="size-4" />
+	      </button>
+	      
+	    </div>
 	  </div>
 	  
 	  <div 
@@ -485,6 +491,9 @@ onUnmounted(() => {
 	<p class="text-base-content/70">
 	  Way to go!
 	</p>
+	<button @click="engine.undo" class="btn btn-primary btn-sm rounded-3xl" :disabled="!engine.undoArray.length">
+	  <RefreshCw class="size-4" />
+	</button>
       </div>
 
     </div>
