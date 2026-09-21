@@ -1223,7 +1223,7 @@ I think I need a new table, something like Session, Sync or (daily practice) His
 - If you are in words view or prac view, and book.words and book.pracs are loaded, you can practice the book offline
 - To do so, I need to sync book when user enters a words view.  Currently, only book.words are loaded.
 
-*** undo
+*** <DONE> undo
 - infoTried, infoMem, isFlipped, lw, ww, pracIdx
 - prev pracs[lw[0]], new pracs[lw[lw.length-1]]
   - -> all prev pracs[lw[0]], pracs[ww[0]]
@@ -1242,11 +1242,11 @@ I think I need a new table, something like Session, Sync or (daily practice) His
 - m - play answer
 - A - toggle auto-play
 - Esc - words view (Esc again \to books view)
-- (U - undo)
+- U - undo
 
 
 
 *** bug
-- Book name (the same one) isn't shown on the words view title
-- browser tab name is Vite App
+- <done> browser tab name is Vite App
+- <done> Book name (the same one) isn't shown on the words view title
 - if lw.length == 1, autoplay doesn't play

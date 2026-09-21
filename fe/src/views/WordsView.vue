@@ -24,7 +24,7 @@ const router = useRouter()
 const bix = booksStore.id2ixBook(booksStore.activeBookId)
 
 const currentBook = computed(() => {
-  if (!bix) return null
+  if (bix == null) return null
   return booksStore.books[bix]
 })
 

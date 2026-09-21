@@ -306,7 +306,7 @@ const speakTts = (txt: string) => {
 }
 
 // 1. When a new card is loaded, reset flip and speak the front (if autoplay on)
-watch(() => engine.pracIdx, async (id) => {
+watch(() => engine.infoTried, async (id) => {
   if (id == null) return
   engine.isFlipped = false
   if (!isAutoplay.value) return
