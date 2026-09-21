@@ -1246,7 +1246,8 @@ I think I need a new table, something like Session, Sync or (daily practice) His
 
 
 
-*** bug
+*** bug (9/21)
 - <done> browser tab name is Vite App
 - <done> Book name (the same one) isn't shown on the words view title
-- if lw.length == 1, autoplay doesn't play
+- <done> if lw.length == 1, autoplay doesn't play
+- when flipping left (==once more) cards, sometimes it fires moving back to another page

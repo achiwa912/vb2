@@ -2,3 +2,7 @@
 @plugin "daisyui" {
     themes: bumblebee, light, dark;
 }
+
+html, body {
+  overscroll-behavior-x: none;
+}

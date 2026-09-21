@@ -114,7 +114,7 @@ const deleteWord = async () => {
 // ====== animation ========================================
 
 const EXIT_MS = 180
-const SWIPE_THRESHOLD = 100
+const SWIPE_THRESHOLD = 80 // was 100
 const TAP_THRESHOLD = 8
 const ROTATION_DIVISOR = 20
 
