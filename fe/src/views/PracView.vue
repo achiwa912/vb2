@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed, reactive, watch, nextTick } from
 import { onBeforeRouteLeave } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { PracEngine } from '@/lib/pracengine'
-import { ThumbsUp, ThumbsDown, SkipForward, Music, Music2, Music3, RefreshCw, Check, X, SquarePen } from '@lucide/vue'
+import { ThumbsUp, ThumbsDown, SkipForward, Music, Music2, Music3, RefreshCw, Check, X, SquarePen, Undo2 } from '@lucide/vue'
 import type { components } from '@/types/api'
 import Navbar from '@/components/Navbar.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
@@ -428,7 +428,7 @@ onUnmounted(() => {
 	    </div>
 	    <div class="flex justify-center gap-3 absolute right-0">
 	      <button @click.stop="engine.undo" class="btn btn-primary btn-sm rounded-3xl" :disabled="!engine.undoArray.length">
-		<RefreshCw class="size-4" />
+		<Undo2 class="size-4" />
 	      </button>
 	    </div>
 	  </div>

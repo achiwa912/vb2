@@ -1246,8 +1246,91 @@ I think I need a new table, something like Session, Sync or (daily practice) His
 
 
 
-*** bug (9/21)
+*** bugs (9/21)
 - <done> browser tab name is Vite App
 - <done> Book name (the same one) isn't shown on the words view title
 - <done> if lw.length == 1, autoplay doesn't play
-- when flipping left (==once more) cards, sometimes it fires moving back to another page
+- <done> when flipping left (==once more) cards, sometimes it fires moving back to another page
+
+#+begin_src 
+vb2 (vocaBull) — context for next session
+==========================================
+
+Recently fixed:
+- Mobile swipe-vs-scroll conflict (PracView.vue): back-face div's
+  overflow-y-auto/max-h-[220px] competed with card's touch-action:pan-y,
+  causing pointercancel mid-swipe. Removed overflow/max-h — fixed.
+- Stale index bug after word delete: splice(engine.pracIdx,1) on
+  booksStore.pracs left engine.lw/pracIdx stale. Fixed by calling
+  engine.resetWindows() right after the splice.
+- Undo (okay/onceMore/memorized) implemented in PracEngine:
+  - saveUndo() at top of each action, snapshots (all copied, not
+    referenced): infoTried, infoMem, isFlipped, pracIdx, lw (spread),
+    ww (spread), praclw0 ({...pracs[lw[0]]}), pracww0 (shallow copy or
+    null if ww[0] undefined)
+  - undo() pops undoArray, restores fields, writes back copies of
+    praclw0/pracww0 into booksStore.pracs
+  - resetWindows() clears undoArray (handles day-boundary reset case)
+  - No cap on undoArray depth (sessions realistically small)
+  - Deliberately NOT tracking new->learning status flips on
+    newly-pulled-in pracs elsewhere in lw/ww — accepted as low-impact
+- Fixed "Pinia called before app.use(pinia)" error: pracengine.ts had
+  a stray module-level `const booksStore = useBooksStore()` (line 8)
+  plus bare `booksStore` references inside class methods (e.g. in
+  saveUndo). Fix in progress: replace bare booksStore refs with
+  this.store, delete the module-level call, revert the main.ts
+  pinia-export workaround.
+- Fixed book title not showing for book id==1: `if (!bix) return null`
+  treated index 0 (falsy) as "no book". 
+- Browser tab title still needs updating in index.html (<title>vocaBull</title>) — mentioned, not yet confirmed done.
+- Added `overscroll-behavior-x: none` on html/body in style.css to try
+  to stop Android/Firefox edge-swipe-back misfiring when the user
+  retries a missed left-swipe (once-more) with a bigger gesture.
+  Just applied — untested pending real-device retry.
+
+Backlog / open items:
+1. edit word feature on PracView (requested by daughter's feedback) —
+   not started; need to decide UI/flow (modal? inline?).
+2. Verify overscroll-behavior-x fix actually stops back-navigation
+   misfires on Pixel 7xl / Firefox.
+3. Finish pracengine.ts booksStore -> this.store cleanup (confirm
+   constructor assigns this.store = store).
+4. Books-view aggregate stats (num books, review/learn/new totals
+   across books) — deprioritized ("satisfaction" not "motivation").
+   Needs server-side aggregation since frontend only loads one book's
+   pracs at a time. Not started, not fully spec'd.
+5. Practice-history heatmap (GitHub-style, past 2 weeks) — needs new
+   sessions/history table. Parked: conflicts with current
+   last-write-wins-per-prac sync model since there's no delta/increment
+   tracking yet (two-device offline sync would clobber counts).
+6. Hardest-word list (by once-more count) — needs num_once_more/
+   num_okay counters on practices table. Same parking reason as #5.
+7. Migration strategy for sessions table + new counters on a live
+   PythonAnywhere deployment — Alembic vs manual ALTER TABLE, no
+   decision made, user has never used Alembic.
+
+Words-view stats (mastery = status=='review' && due_dates>=10, per
+direction wd/dw, plus review/learn/new counts) — DONE, per-book scoped
+via bix.
+
+Offline practice support — DONE: loading a book/starting practice
+loads all words+progress to device; must sync before switching devices
+or unsynced progress is at risk.
+
+Sync model: sends all pracs, receives all words+pracs, last-write-wins
+per prac (no increments currently).
+#+end_src
+
+*** CSV import
+- new endpoint ~/importcsv~
+  - for each line
+    - try to parse as csv '\t,;'
+    - skip if error
+    - skip if existing; case insensitive
+    - add a word if successful 
+    - return num imported, skipped, failed, failed list[line_num, word]
+
+#+begin_src 
+pnpm exec openapi-typescript http://localhost:8000/openapi/openapi.json -o src/types/api.ts
+#+end_src
+

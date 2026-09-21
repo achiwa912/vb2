@@ -1,10 +1,14 @@
 import os
+import io
 from datetime import UTC, timedelta, datetime, timezone
 from struct import iter_unpack
 from dotenv import load_dotenv
+import csv
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
-# from flask import Flask
+from flask import request
+
 # from flask_pydantic import validate
 from flask_cors import CORS
 from flask_openapi3 import OpenAPI, Info
@@ -14,7 +18,6 @@ from flask_jwt_extended import (
     jwt_required,
     get_jwt_identity,
 )
-from sqlalchemy import select
 from google.auth.transport import requests
 from google.oauth2 import id_token
 from .database import db
@@ -39,6 +42,8 @@ from .schemas import (
     PracticeSchema,
     MessageResp,
     ExportResp,
+    ImportCsvReq,
+    ImportCsvResp,
 )
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -232,6 +237,62 @@ def list_book_words(path: BookPath) -> tuple[dict[str, str], int]:
         db.session.execute(select(Word).where(Word.book_id == path.id)).scalars().all()
     )
     return ListWordsResp.model_validate({"words": words}).model_dump(mode="json"), 200
+
+
+@app.post(
+    "/importcsv/<int:id>",
+    responses={200: ImportCsvResp, 404: MessageResp, 404: MessageResp},
+)
+@jwt_required()
+def import_csv(path: BookPath, form: ImportCsvReq):
+    user_id = int(get_jwt_identity())
+    book = db.session.execute(
+        select(Book).where(Book.user_id == user_id, Book.id == path.id)
+    ).scalar_one_or_none()
+    if not book:
+        return {"message": "Book not found"}, 404
+    file = request.files["file"]
+    text_data = file.stream.read().decode("utf-8-sig")
+
+    try:
+        dialect = csv.Sniffer().sniff(text_data[:2048], delimiters=",;\t")
+    except csv.Error:
+        return {"message": "File not recognized"}, 400
+
+    stream = io.StringIO(text_data)
+    reader = csv.reader(stream, dialect=dialect)
+
+    errors = []
+    added = skipped = failed = 0
+    for row in reader:
+        if len(row) == 0:
+            failed += 1
+            errors.append((reader.line_num, "UNKNOWN"))
+            continue
+        rw = row[0].strip()
+        rw_lower = rw.lower()
+        if len(row) > 3 or len(row) < 2 or not rw:
+            failed += 1
+            errors.append((reader.line_num, rw[:16]))
+            continue
+
+        word = db.session.execute(
+            select(Word).where(
+                Word.book_id == path.id, func.lower(Word.word) == rw_lower
+            )
+        ).scalar_one_or_none()
+        if word:
+            skipped += 1
+            continue
+
+        added += 1
+        w = Word(word=rw, definition=row[1], sample=row[2], book_id=path.id)
+        db.session.add(w)
+    db.session.commit()
+    imprt = ImportCsvResp.model_validate(
+        {"added": added, "skipped": skipped, "failed": failed, "errors": errors}
+    )
+    return imprt.model_dump(mode="json"), 200
 
 
 @app.post("/import", responses={200: None, 400: MessageResp})

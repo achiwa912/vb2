@@ -1,6 +1,6 @@
 from typing import ClassVar, Literal
 from datetime import datetime, timezone
-from pydantic import BaseModel, ConfigDict, field_serializer
+from pydantic import BaseModel, ConfigDict, field_serializer, Field
 from .models import PracStat, PracDir
 
 
@@ -133,3 +133,14 @@ class ExportResp(BaseModel):
     books: list[BookSchema]
     words: list[WordSchema]
     practices: list[PracticeSchema]
+
+
+class ImportCsvReq(BaseModel):
+    file: bytes = Field(description="CSV file to import")
+
+
+class ImportCsvResp(BaseModel):
+    added: int
+    skipped: int
+    failed: int
+    errors: list[tuple[int, str]]  # (line_number, word)

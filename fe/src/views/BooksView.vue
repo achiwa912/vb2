@@ -144,7 +144,7 @@ onMounted(async () => {
   <Navbar>
     <input ref="fileInputRef" type="file" accept=".json,application/json" class="hidden-input" @change="importAll" />
     <li><div @click="exportAll"><Download />Export All</div></li>
-    <li><div @click="triggerImport"><Upload />Import</div></li>
+    <li><div @click="triggerImport"><Upload />Import All</div></li>
     <div class="divider my-1"></div>
   </Navbar>
 

@@ -116,6 +116,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/importcsv/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["import_csv_importcsv__int_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sync/{id}": {
         parameters: {
             query?: never;
@@ -196,6 +212,29 @@ export interface components {
             name: string;
             /** User Id */
             user_id: number;
+        };
+        /** ImportCsvReq */
+        ImportCsvReq: {
+            /**
+             * File
+             * Format: binary
+             * @description CSV file to import
+             */
+            file: string;
+        };
+        /** ImportCsvResp */
+        ImportCsvResp: {
+            /** Added */
+            added: number;
+            /** Errors */
+            errors: [
+                number,
+                string
+            ][];
+            /** Failed */
+            failed: number;
+            /** Skipped */
+            skipped: number;
         };
         /** ListBooksResp */
         ListBooksResp: {
@@ -792,6 +831,50 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorModel"][];
+                };
+            };
+        };
+    };
+    import_csv_importcsv__int_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ImportCsvReq"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportCsvResp"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
