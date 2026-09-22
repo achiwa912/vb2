@@ -873,6 +873,15 @@ export interface operations {
                     "application/json": components["schemas"]["ImportCsvResp"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {

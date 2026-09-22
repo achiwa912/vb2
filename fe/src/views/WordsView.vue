@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { SquarePen, SquareArrowRight, SquareArrowLeft } from '@lucide/vue'
+import { SquarePen, SquareArrowRight, SquareArrowLeft, Upload } from '@lucide/vue'
 import { useBooksStore } from '@/stores/books'
 import type { components } from '@/types/api'
 import Navbar from '@/components/Navbar.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
+import { client } from '@/api/client'
 
-//type BookSchema = components['schemas']['BookSchema']
 type WordSchema = components['schemas']['WordSchema']
 type PracDir = components['schemas']['PracDir']
+type ImportCsvResp = components['schemas']['ImportCsvResp']
 
 //const alerts = ref([])
 const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
 const modalRef = ref<HTMLDialogElement | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const importModalRef = ref<HTMLDialogElement | null>(null)
 const selectedWord = ref<WordSchema | null>(null)
 const isNew = ref<boolean>(false)
 const editWord = ref<string>('')
@@ -22,6 +25,7 @@ const editSample = ref<string>('')
 const booksStore = useBooksStore()
 const router = useRouter()
 const bix = booksStore.id2ixBook(booksStore.activeBookId)
+const importResults = ref<ImportCsvResp | null>(null)
 
 const currentBook = computed(() => {
   if (bix == null) return null
@@ -125,6 +129,7 @@ const closeModal = () => {
   modalRef.value?.close()
 }
 
+
 const updateWord = async () => {
   if (selectedWord.value){
     const resp = await booksStore.editWord(editWord.value, editDef.value, editSample.value, selectedWord.value.book_id, selectedWord.value.id)
@@ -168,10 +173,55 @@ onMounted(async () => {
   // await booksStore.fetchWords()
   await booksStore.syncBook()
 })
+
+// ====== import CSV =======================================
+
+function triggerImport() {
+  fileInputRef.value?.click()
+}
+
+async function importCsv(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  const formData = new FormData()
+  if (!file) return
+  formData.append('file', file)
+  target.value = ''
+
+  if (!currentBook.value) return
+  
+  const { data, error, response } = await client.POST(`/importcsv/{id}`, {
+    params: { path: { id: currentBook.value.id } },
+    body: formData as any,
+  })
+  if (error) {
+    if ('message' in error) {
+      toastRef.value?.showAlert(`Import failed: ${error.message} (${response.status})`, 'error')
+      toastRef.value?.showAlert(`Import failed: unknown error (${response.status})`, 'error')
+    }
+  } else {
+    toastRef.value?.showAlert(`Successfuly imported`, 'success')
+    importResults.value = data as unknown as ImportCsvResp
+    await booksStore.fetchWords()
+    openImportModal()
+  }
+}
+
+const openImportModal = () => {
+  importModalRef.value?.showModal()
+}
+
+const closeImportModal = () => {
+  importModalRef.value?.close()
+}
+
 </script>
 
 <template>
   <Navbar>
+    <input ref="fileInputRef" type="file" accept=".csv,application/csv" class="hidden-input" @change="importCsv" />
+    <li><div @click="triggerImport"><Upload />Import CSV</div></li>
+    <div class="divider my-1"></div>
   </Navbar>
 
   <ToastContainer ref="toastRef" />
@@ -373,5 +423,61 @@ onMounted(async () => {
     <form method="dialog" class="modal-backdrop">
       <button @click="closeModal">close</button>
     </form>
-  </dialog>  
+  </dialog>
+
+  <!-- import result modal -->
+  <dialog ref="importModalRef" class="modal modal-bottom sm:modal-middle backdrop:backdrop-blur-sm" >
+    <div class="modal-box max-w-lg rounded-3xl border border-base-200/60 bg-base-100/95 p-6 shadow-2xl backdrop-blur-md" >
+      <!-- Header -->
+      <div class="mb-6 flex items-center justify-between">
+	<div> <div class="mb-1 text-xs font-semibold uppercase tracking-widest text-primary"> Import complete </div>
+	  <h3 class="text-2xl font-bold tracking-tight"> CSV Import Result </h3>
+	</div>
+	<button type="button" class="btn btn-sm btn-circle btn-ghost text-base-content/50 hover:bg-base-200 hover:text-base-content" @click="closeImportModal" aria-label="Close modal" > ✕ </button>
+      </div>
+
+      <!-- Summary -->
+      <div class="mb-6 grid grid-cols-3 gap-3">
+	<div class="rounded-2xl border border-success/20 bg-success/5 p-4 text-center">
+	  <div class="text-2xl font-bold text-success"> {{ importResults?.added }} </div>
+	  <div class="mt-1 text-xs font-medium uppercase tracking-wide text-base-content/60"> Added </div>
+	</div> <div class="rounded-2xl border border-warning/20 bg-warning/5 p-4 text-center">
+	  <div class="text-2xl font-bold text-warning"> {{ importResults?.skipped }} </div>
+	  <div class="mt-1 text-xs font-medium uppercase tracking-wide text-base-content/60"> Skipped </div>
+	</div> <div class="rounded-2xl border border-error/20 bg-error/5 p-4 text-center">
+	  <div class="text-2xl font-bold text-error"> {{ importResults?.failed }} </div>
+	  <div class="mt-1 text-xs font-medium uppercase tracking-wide text-base-content/60"> Failed </div>
+	</div>
+      </div>
+
+      <!-- Errors -->
+      <div v-if="importResults?.errors?.length" class="mb-6 rounded-2xl border border-error/20 bg-error/5 p-4" >
+	<div class="mb-3 flex items-center gap-2 text-sm font-semibold text-error">
+	  <span class="text-base">!</span> Import errors </div>
+	<div class="space-y-2">
+	  <div v-for="error in importResults.errors" :key="error[0]" class="flex gap-3 rounded-xl bg-base-100/70 px-3 py-2 text-sm" >
+	    <span class="shrink-0 font-mono text-xs text-base-content/50"> Line {{ error[0] }} </span>
+	    <span class="text-base-content/80"> {{ error[1] }} </span>
+	  </div>
+	</div>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end border-t border-base-200 pt-5">
+	<button type="button" class="btn btn-primary rounded-xl px-6" @click="closeImportModal" > Done </button>
+      </div>
+    </div>
+
+    <!-- Backdrop click to close -->
+    <form method="dialog" class="modal-backdrop">
+      <button @click="closeImportModal">close</button>
+    </form>
+  </dialog>
+  
 </template>
+
+<style scoped>
+.hidden-input {
+  display: none
+}
+</style>

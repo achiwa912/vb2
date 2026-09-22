@@ -241,7 +241,7 @@ def list_book_words(path: BookPath) -> tuple[dict[str, str], int]:
 
 @app.post(
     "/importcsv/<int:id>",
-    responses={200: ImportCsvResp, 404: MessageResp, 404: MessageResp},
+    responses={200: ImportCsvResp, 400: MessageResp, 404: MessageResp},
 )
 @jwt_required()
 def import_csv(path: BookPath, form: ImportCsvReq):
@@ -265,9 +265,9 @@ def import_csv(path: BookPath, form: ImportCsvReq):
     errors = []
     added = skipped = failed = 0
     for row in reader:
-        if len(row) == 0:
-            failed += 1
-            errors.append((reader.line_num, "UNKNOWN"))
+        if len(row) == 0:  # blank line?
+            # failed += 1
+            # errors.append((reader.line_num, "UNKNOWN"))
             continue
         rw = row[0].strip()
         rw_lower = rw.lower()

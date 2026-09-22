@@ -1,6 +1,7 @@
 from typing import ClassVar, Literal
 from datetime import datetime, timezone
 from pydantic import BaseModel, ConfigDict, field_serializer, Field
+from flask_openapi3.models.file import FileStorage
 from .models import PracStat, PracDir
 
 
@@ -136,7 +137,7 @@ class ExportResp(BaseModel):
 
 
 class ImportCsvReq(BaseModel):
-    file: bytes = Field(description="CSV file to import")
+    file: FileStorage = Field(description="CSV file to import")
 
 
 class ImportCsvResp(BaseModel):
