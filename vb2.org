@@ -1334,3 +1334,53 @@ per prac (no increments currently).
 pnpm exec openapi-typescript http://localhost:8000/openapi/openapi.json -o src/types/api.ts
 #+end_src
 
+*** Keyboard shortcuts
+- 9/22
+#+begin_src 
+vb2 (vocaBull) — context for next session
+==========================================
+
+CSV bulk import: DONE (backend /importcsv/{id} endpoint + frontend
+file picker + FormData upload + result modal). Notable gotchas hit
+along the way:
+- flask_openapi3 needs its own FileStorage (from
+  flask_openapi3.models.file), not bytes or raw werkzeug FileStorage
+- openapi-typescript types `format: binary` fields as `string` and
+  widens tuple types (e.g. errors: [number, string][] -> 
+  (string|number)[][]) — worked around with `as unknown as <Type>`
+  casts at the call sites rather than fixing codegen config
+- auth middleware's onResponse treats both 401 and 422 as auth
+  failure and force-logs-out; this masked an unrelated 422
+  validation error while debugging — worth narrowing to 401 only
+  at some point
+
+Next up: keyboard shortcuts — not started, no design decisions made
+yet (which actions, which keys, scope/view-specific vs global).
+
+- h, <- - once more
+- j, (lower arrow) - memorized
+- k, (upper arrow), space - flip card
+- l, -> - okay
+- n - play front
+- m - play answer
+- A - toggle auto-play
+- Esc - words view (Esc again \to books view)
+- U - undo
+#+end_src
+
+#+begin_src 
+I'd like to add keyboard shortcuts to my flashcard web app: vb2 which is written in TS+Vue3.
+Here are candidates: 
+- h, <- - once more
+- j, (lower arrow) - memorized
+- k, (upper arrow), space - flip card
+- l, -> - okay
+- n - play front
+- m - play rest
+- A - toggle auto-play
+- Esc - words view (Esc again \to books view)
+- U - undo
+
+Don't go so fast.  Start with the basics that I need to understand first.
+#+end_src
+

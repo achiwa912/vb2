@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, reactive, watch, nextTick } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { PracEngine } from '@/lib/pracengine'
 import { ThumbsUp, ThumbsDown, SkipForward, Music, Music2, Music3, RefreshCw, Check, X, SquarePen, Undo2 } from '@lucide/vue'
@@ -8,6 +8,7 @@ import type { components } from '@/types/api'
 import Navbar from '@/components/Navbar.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 
+const router = useRouter()
 const booksStore = useBooksStore()
 const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
 const modalRef = ref<HTMLDialogElement | null>(null)
@@ -72,7 +73,6 @@ async function manualSync() {
 // ====== edit word ========================================
 
 const openModal = () => {
-  console.log('!')
   editWord.value = currentWord.value?.word ?? ''
   editDef.value = currentWord.value?.definition ?? ''
   editSample.value = currentWord.value?.sample ?? ''
@@ -330,6 +330,7 @@ onBeforeRouteLeave(async () => {
 })
 
 onMounted(async () => {
+  window.addEventListener("keydown", handleKeyDown)
   engine.resetWindows()
   mq = window.matchMedia('(prefers-reduced-motion: reduce)')
   prefersReducedMotion.value = mq.matches
@@ -343,7 +344,79 @@ onMounted(async () => {
 })
 onUnmounted(() => {
   mq?.removeEventListener('change', onMqChange)
+  window.removeEventListener('keydown', handleKeyDown)
 })
+
+//====== keyboard shortcuts ================================
+
+type Action = 'okay' | 'onceMore' | 'memorized' | 'flip' | 'playFront' | 'playRest' | 'toggleAutoplay' | 'escape' | 'undo'
+
+function resolveAction(event: KeyboardEvent): Action | null {
+  switch (event.key) {
+    case 'h':
+    case 'ArrowLeft':
+      return 'onceMore'
+    case 'j':
+    case 'ArrowDown':
+      return 'memorized'
+    case 'k':
+    case 'ArrowUp':
+    case ' ':
+      return 'flip'
+    case 'l':
+    case 'ArrowRight':
+      return 'okay'
+    case 'n':
+      return 'playFront'
+    case 'm':
+      return 'playRest'
+    case 'A':
+      return 'toggleAutoplay'
+    case 'Escape':
+      return 'escape'
+    case 'U':
+      return 'undo'
+    default:
+      return null
+  }
+}
+
+const handlers: Partial<Record<Action, () => void>> = {
+  'onceMore': () => engine.onceMore(),
+  'memorized': () => engine.memorized(),
+  'flip': () => flipCard(),
+  'okay': () => engine.okay(),
+  'playFront': () => speakFront(),
+  'playRest': () => { if (engine.isFlipped ) speakRest() },
+  'toggleAutoplay': () => { isAutoplay.value = !isAutoplay.value },
+  'escape': () => router.push('/words'),
+  'undo': () => engine.undo(),
+}
+
+const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
+const SCROLL_KEYS = new Set([' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'])
+
+function isEditable(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  return target.isContentEditable || EDITABLE_TAGS.has(target.tagName)
+}
+
+function handleKeyDown(e: KeyboardEvent) {
+  //console.log(e.key)
+
+  if (e.ctrlKey || e.metaKey || e.altKey) return
+  if (e.repeat) return
+  if (modalRef.value?.open) return
+  // do I want to check navbar menu open here???
+
+  const action = resolveAction(e)
+  if (!action) return
+
+  if (action !== 'escape' && isEditable(e.target)) return
+  if (SCROLL_KEYS.has(e.key)) e.preventDefault()  
+  
+  handlers[action]?.()
+}
 
 </script>
 
