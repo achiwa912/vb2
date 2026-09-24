@@ -1356,16 +1356,6 @@ along the way:
 
 Next up: keyboard shortcuts — not started, no design decisions made
 yet (which actions, which keys, scope/view-specific vs global).
-
-- h, <- - once more
-- j, (lower arrow) - memorized
-- k, (upper arrow), space - flip card
-- l, -> - okay
-- n - play front
-- m - play answer
-- A - toggle auto-play
-- Esc - words view (Esc again \to books view)
-- U - undo
 #+end_src
 
 #+begin_src 
