@@ -745,7 +745,7 @@ onUnmounted(() => {
   left: 50%;
   bottom: 32px;
   transform: translateX(-50%);
-  z-index: 20;
+  z-index: 40;
 
   width: min(720px, calc(100vw - 32px));
   padding: 12px 18px;
