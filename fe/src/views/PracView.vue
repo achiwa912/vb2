@@ -629,11 +629,13 @@ onUnmounted(() => {
 
   <!-- keyboard shortcut help -->
   <Transition name="help">
-    <div v-if="helpOpen" class="help bg-base-100 text-base-content border border-base-300 rounded-2xl shadow-md" role="status" aria-live="polite">
-      <div class="help__inner">
-	<div v-for="s in shortcuts" :key="s.label" class="help__item">
-          <span class="help__keys"><kbd v-for="k in s.keys" :key="k">{{ k }}</kbd></span>
-          <span class="help__label">{{ s.label }}</span>
+    <div v-if="helpOpen" class="fixed left-1/2 bottom-8 z-40 w-[min(720px,calc(100vw-32px))] -translate-x-1/2 bg-base-100 text-base-content border border-base-300 rounded-2xl px-[18px] py-3 shadow-md backdrop-blur-md pointer-events-none leading-[0.8]" role="status" aria-live="polite">
+      <div class="flex flex-wrap justify-center gap-x-[18px] gap-y-2">
+	<div v-for="s in shortcuts" :key="s.label" class="flex items-center gap-1.5">
+          <span class="inline-flex gap-0.5">
+	    <kbd v-for="k in s.keys" :key="k" class="kbd min-w-[1.4em] rounded-[5px] border border-base-content/20 border-b-2 bg-base-content/10 px-1.5 py-0.5 text-center text-sm font-normal">{{ k }}</kbd>
+	  </span>
+          <span class="opacity-75">{{ s.label }}</span>
 	</div>
       </div>
     </div>
@@ -740,47 +742,8 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.help {
-  position: fixed;
-  left: 50%;
-  bottom: 32px;
-  transform: translateX(-50%);
-  z-index: 40;
-
-  width: min(720px, calc(100vw - 32px));
-  padding: 12px 18px;
-
-  line-height: 0.8;
-  backdrop-filter: blur(6px);
-  pointer-events: none;
-}
-
-.help__inner {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 18px;
-  justify-content: center;
-}
-
-.help__item { display: flex; align-items: center; gap: 6px; }
-.help__keys { display: inline-flex; gap: 2px; }
-.help__label { opacity: 0.75; }
-
-kbd {
-  font: inherit;
-  font-size: 14px;
-  min-width: 1.4em;
-  padding: 2px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-bottom-width: 2px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.08);
-  text-align: center;
-}
-
 .Help-enter-active,
 .help-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
 .help-enter-from,
 .help-leave-to { opacity: 0; transform: translateX(-50%) translateY(6px); }
-
 </style>
