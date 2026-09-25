@@ -329,27 +329,26 @@ onBeforeRouteLeave(async () => {
   await booksStore.syncServer()
 })
 
-onMounted(async () => {
-  window.addEventListener("keydown", handleKeyDown)
-  engine.resetWindows()
-  mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-  prefersReducedMotion.value = mq.matches
-  mq.addEventListener('change', onMqChange)
-  loadVoices()
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-    window.speechSynthesis.onvoiceschanged = loadVoices
-  }
-  await booksStore.syncServer()
-  await engine.doPrac()
-})
-onUnmounted(() => {
-  mq?.removeEventListener('change', onMqChange)
-  window.removeEventListener('keydown', handleKeyDown)
-})
-
 //====== keyboard shortcuts ================================
 
-type Action = 'okay' | 'onceMore' | 'memorized' | 'flip' | 'playFront' | 'playRest' | 'toggleAutoplay' | 'escape' | 'undo'
+const TIMEOUT_MS = 10_000
+const helpOpen = ref(false)
+let timer: ReturnType<typeof setTimeout> | undefined
+
+type Action = 'okay' | 'onceMore' | 'memorized' | 'flip' | 'playFront' | 'playRest' | 'toggleAutoplay' | 'escape' | 'undo' | 'help'
+
+const shortcuts = [
+  { keys: ['h', '\u2190'],       label: 'Once more' },
+  { keys: ['j', '\u2193'],       label: 'Memorized' },
+  { keys: ['k', '\u2191', '\u2423'],  label: 'Flip' },
+  { keys: ['l', '\u2192'],       label: 'Okay' },
+  { keys: ['n'],            label: 'Play front' },
+  { keys: ['m'],            label: 'Play rest' },
+  { keys: ['A'],            label: 'Autoplay' },
+  { keys: ['Esc'],          label: 'Leave session' },
+  { keys: ['U'],            label: 'Undo' },
+  { keys: ['?'],            label: 'Help' },
+]
 
 function resolveAction(event: KeyboardEvent): Action | null {
   switch (event.key) {
@@ -376,6 +375,8 @@ function resolveAction(event: KeyboardEvent): Action | null {
       return 'escape'
     case 'U':
       return 'undo'
+    case '?':
+      return 'help'
     default:
       return null
   }
@@ -393,6 +394,7 @@ const handlers: Partial<Record<Action, () => void>> = {
   },
   'escape': () => router.push('/words'),
   'undo': () => engine.undo(),
+  'help': () => showHelp(),  
 }
 
 const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
@@ -408,6 +410,12 @@ function handleKeyDown(e: KeyboardEvent) {
 
   if (e.ctrlKey || e.metaKey || e.altKey) return
   if (e.repeat) return
+
+  if (helpOpen.value) {
+    hideHelp()
+    if (e.key === 'Escape') return
+  }
+  
   if (modalRef.value?.open) return
   // do I want to check navbar menu open here???
 
@@ -419,6 +427,49 @@ function handleKeyDown(e: KeyboardEvent) {
   
   handlers[action]?.()
 }
+
+function clearTimer() {
+  if (timer !== undefined) { clearTimeout(timer); timer = undefined }
+}
+
+function showHelp() {
+  helpOpen.value = true
+  clearTimer()
+  timer = setTimeout(() => { helpOpen.value = false; timer = undefined }, TIMEOUT_MS)
+}
+
+function hideHelp() {
+  helpOpen.value = false
+  clearTimer()
+}
+
+function dismissHelpOnPointerDown() {
+  if (helpOpen.value) hideHelp()
+}
+
+onMounted(async () => {
+  window.addEventListener('pointerdown', dismissHelpOnPointerDown)
+  window.addEventListener("keydown", handleKeyDown)
+  engine.resetWindows()
+  mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+  prefersReducedMotion.value = mq.matches
+  mq.addEventListener('change', onMqChange)
+  loadVoices()
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = loadVoices
+  }
+  await booksStore.syncServer()
+  await engine.doPrac()
+})
+
+onUnmounted(() => {
+  clearTimer()
+  window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('pointerdown', dismissHelpOnPointerDown)
+  mq?.removeEventListener('change', onMqChange)
+  window.removeEventListener('keydown', handleKeyDown)
+})
+
 
 </script>
 
@@ -576,6 +627,18 @@ function handleKeyDown(e: KeyboardEvent) {
     
   </div>
 
+  <!-- keyboard shortcut help -->
+  <Transition name="help">
+    <div v-if="helpOpen" class="help bg-base-100 text-base-content border border-base-300 rounded-2xl shadow-md" role="status" aria-live="polite">
+      <div class="help__inner">
+	<div v-for="s in shortcuts" :key="s.label" class="help__item">
+          <span class="help__keys"><kbd v-for="k in s.keys" :key="k">{{ k }}</kbd></span>
+          <span class="help__label">{{ s.label }}</span>
+	</div>
+      </div>
+    </div>
+  </Transition>
+
   <!-- word add/edit modal -->
   <dialog ref="modalRef" class="modal modal-bottom sm:modal-middle backdrop:backdrop-blur-sm transition-all duration-300">
     <div class="modal-box p-6 max-w-lg rounded-2xl border border-base-200/60 shadow-xl bg-base-100/95 backdrop-blur-md">
@@ -675,3 +738,49 @@ function handleKeyDown(e: KeyboardEvent) {
   </dialog>  
   
 </template>
+
+<style scoped>
+.help {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 20;
+
+  width: min(720px, calc(100vw - 32px));
+  padding: 12px 18px;
+
+  line-height: 0.8;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.help__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  justify-content: center;
+}
+
+.help__item { display: flex; align-items: center; gap: 6px; }
+.help__keys { display: inline-flex; gap: 2px; }
+.help__label { opacity: 0.75; }
+
+kbd {
+  font: inherit;
+  font-size: 14px;
+  min-width: 1.4em;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+.Help-enter-active,
+.help-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.help-enter-from,
+.help-leave-to { opacity: 0; transform: translateX(-50%) translateY(6px); }
+
+</style>

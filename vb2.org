@@ -1374,3 +1374,8 @@ Here are candidates:
 Don't go so fast.  Start with the basics that I need to understand first.
 #+end_src
 
+#+begin_src 
+I want to show keyboard shortcut help when '?' is typed, then hide it once other key is typed, mouse/track pad is clicked or 10 seconds are passed.  Help doesn't swallow other keys while it's shown.
+
+help modal(?) can hide the card, possibly okay button or the like.  user operates on keyboard when '?' is typed, and typing any key will dismiss the modal.
+#+end_src
