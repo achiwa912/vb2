@@ -388,7 +388,9 @@ const handlers: Partial<Record<Action, () => void>> = {
   'okay': () => engine.okay(),
   'playFront': () => speakFront(),
   'playRest': () => { if (engine.isFlipped ) speakRest() },
-  'toggleAutoplay': () => { isAutoplay.value = !isAutoplay.value },
+  'toggleAutoplay': () => {
+    isAutoplay.value = !isAutoplay.value
+  },
   'escape': () => router.push('/words'),
   'undo': () => engine.undo(),
 }
@@ -431,7 +433,7 @@ function handleKeyDown(e: KeyboardEvent) {
     <div class="flex mt-4 mx-4 items-end gap-1">
       <h1 class="text-3xl font-semibold">Practice</h1>
       <div class="text-base-content/50 ml-3">{{ booksStore.pracDir == 'wd' ? 'Word to Definition' : 'Definiton to Word' }}</div>
-      <input type="checkbox" class="toggle ml-2" v-model="isAutoplay" />
+      <input type="checkbox" class="toggle ml-2" v-model="isAutoplay" @change="($event.target as HTMLInputElement).blur()" />
       <div>Autoplay</div>
     </div>
 
