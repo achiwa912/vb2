@@ -7,27 +7,6 @@
 
 vocaBull 2 (vb2)* is a flashcard web app for vocabulary building — a modern remake of the original [[https://github.com/achiwa912/vbs][vocaBull (vbs)]].  It blends the frequency-based *Shifting Learning Window (SLW)* method with time-based *Spaced Repetition (SRS)* techniques, while deliberately avoiding the "due debt hell" that demotivates users of strict SRS apps.
 
-* Table of Contents
-:PROPERTIES:
-:TOC:      :include all :depth 3
-:END:
-- [[#overview][Overview]]
-- [[#features][Features]]
-- [[#tech-stack][Tech Stack]]
-- [[#live-demo][Live Demo]]
-- [[#getting-started][Getting Started]]
-  - [[#prerequisites][Prerequisites]]
-  - [[#installation][Installation]]
-  - [[#running-locally][Running Locally]]
-- [[#configuration][Configuration]]
-- [[#deployment-pythonanywhere][Deployment (PythonAnywhere)]]
-- [[#project-structure][Project Structure]]
-- [[#learning-method][Learning Method]]
-- [[#roadmap][Roadmap]]
-- [[#related-links][Related Links]]
-- [[#license][License]]
-- [[#acknowledgements][Acknowledgements]]
-
 * Overview
 
 The original vbs was built with Flask + Jinja2, which required a full server-side HTML render for every flashcard.  On a free PythonAnywhere plan this made card transitions painfully slow.
@@ -44,21 +23,30 @@ vb2 moves all interaction practice logic to the browser (Vue + JavaScript) and o
 
 ** Hybrid learning method
 - *Shifting Learning Window (SLW)* — frequency-based repetition for words you are actively learning
-- *SRS* — time-based scheduling for words you have marked as memorized
-- *No "due debt"* — skipping days or weeks does not flood you with overdue reviews
+- *Lenient SRS* — time-based scheduling for words you have marked as memorized
+  - *No "due debt"* — skipping days or weeks does not flood you with overdue reviews
 
 ** Progress & persistence
-- Words and progress are stored in a database
+- Words and progress are stored in a database (sqlite3 w/ WAL mode)
 - Explicit (as well as automatic) /sync with server/ action to reconcile local and remote state
 - Export and import all words and progress to a local file
+
+** Mobile-friendly UI
+- Optimized for both phone-sized and PC screens
+  - swipe actions on mobile
+  - keyboard shortcuts on PC
+
+** Learn with voice
+vb2 will pronounce words, definitions and sample sentences for you with browser's [[https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis][SpeechSynthesis]] capabilities.  Autoplay-mode will reduce clicking/tapping speak buttons.
+
+** Bulk CSV import
+You can import many words defined in a CSV file.  Can choose =,= (comma), =;= (semi-colon) or =\t= (tab) as delimiters.
 
 ** Auth
 - JWT-based sessions
 - Google OAuth sign-in
   - All you need is a gmail account.  Once signed in, a user account is automatically created in the database.
 
-** Mobile-friendly UI
-- Optimized for both phone-sized and PC screens (still in progress)
 
 * Tech Stack
 
@@ -70,9 +58,12 @@ vb2 moves all interaction practice logic to the browser (Vue + JavaScript) and o
 | Auth       | JWT + Google OAuth                                               |
 | Deployment | [[https://www.pythonanywhere.com][PythonAnywhere]] (manual WSGI configuration)                       |
 
-* Live Demo
+* Live Demo & Usage
+- Prerequisite: a gmail account
 - *App:* https://achiwa912.pythonanywhere.com
-- Note: running in alpha
+  - Note: running in alpha
+- Usage: [[https://blog.achiwa.co.uk/posts/vb2intro/][vocaBull 2 - introduction]]
+
 
 * Getting Started
 ** Prerequisites
@@ -211,10 +202,12 @@ The goal: a kinder, more lenient alternative to strict SRS apps.
 
 * Related Links
 
-- Original vocaBull repo — https://github.com/achiwa912/vbs
-- Introducing vocaBull (original) — https://achiwa912.github.io/vbs_eng.html
+- vb2 live demo: [[https://achiwa912.pythonanywhere.com/]]
+- Blog post: [[https://blog.achiwa.co.uk/posts/vb2intro/][vocaBull 2 - introduction]]
 - Blog post: [[https://blog.achiwa.co.uk/posts/vb2/][vocaBull 2 — a remake of a flashcard web app]]
 - Blog post: [[https://blog.achiwa.co.uk/posts/deployvb2pa/][Deployed vocaBull 2 on PythonAnywhere]]
+- Original vocaBull repo — https://github.com/achiwa912/vbs
+- Introducing vocaBull (original) — https://achiwa912.github.io/vbs_eng.html
 
 * License
 MIT — see [[./LICENSE][LICENSE]].
