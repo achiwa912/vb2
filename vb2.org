@@ -1379,3 +1379,9 @@ I want to show keyboard shortcut help when '?' is typed, then hide it once other
 
 help modal(?) can hide the card, possibly okay button or the like.  user operates on keyboard when '?' is typed, and typing any key will dismiss the modal.
 #+end_src
+
+
+*** Preparing for users (other than me)
+- DB -> WAL, timeout=5000ms
+- max books=20/user
+- max words=1000/book

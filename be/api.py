@@ -117,7 +117,13 @@ def list_books() -> dict[str, ListBooksResp]:
     return ListBooksResp.model_validate({"books": books}).model_dump(mode="json")
 
 
-@app.post("/books/<int:id>/words", responses={200: WordResp, 404: MessageResp})
+MAX_WORDS = 1000
+
+
+@app.post(
+    "/books/<int:id>/words",
+    responses={200: WordResp, 403: MessageResp, 404: MessageResp},
+)
 @jwt_required()
 def create_word(path: BookPath, body: CreateWordReq) -> tuple[dict[str, str], int]:
     user_id = int(get_jwt_identity())
@@ -126,6 +132,14 @@ def create_word(path: BookPath, body: CreateWordReq) -> tuple[dict[str, str], in
     ).scalar_one_or_none()
     if not b:
         return {"message": "Book not found"}, 404
+    word_count = (
+        db.session.scalar(
+            select(func.count()).select_from(Word).where(Word.book_id == path.id)
+        )
+        or 0
+    )
+    if word_count >= MAX_WORDS:
+        return {"message": f"Too many words - already have {word_count} words"}, 403
     w = Word(
         word=body.word, definition=body.definition, sample=body.sample, book_id=path.id
     )
@@ -175,14 +189,27 @@ def delete_word(path: WordPath) -> tuple[dict[str, str], int]:
     return {"message": f"Deleted word id={path.wid} and associated practices"}, 200
 
 
-@app.post("/books", responses={200: BookResp})
+MAX_BOOKS = 20
+
+
+@app.post("/books", responses={200: BookResp, 403: MessageResp})
 @jwt_required()
-def create_book(body: CreateBookReq) -> dict[str, BookResp]:
+def create_book(
+    body: CreateBookReq,
+) -> dict[str, BookResp] | tuple[dict[str, str], int]:
     user_id = int(get_jwt_identity())
+    book_count = (
+        db.session.scalar(
+            select(func.count()).select_from(Book).where(Book.user_id == user_id)
+        )
+        or 0
+    )
+    if book_count >= MAX_BOOKS:
+        return {"message": f"Too many books - already have {book_count} books"}, 403
     b = Book(name=body.name, user_id=user_id)
     db.session.add(b)
     db.session.commit()
-    return BookResp.model_validate({"book": b}).model_dump(mode="json")
+    return BookResp.model_validate({"book": b}).model_dump(mode="json"), 200
 
 
 @app.patch(
