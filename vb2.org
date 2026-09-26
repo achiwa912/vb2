@@ -1392,7 +1392,7 @@ help modal(?) can hide the card, possibly okay button or the like.  user operate
 - <done> CSV import size & XSS possibilities in defs, sample sentences
 - JWT storage - localStorage or httpOnly cookie? -> localStorage
   - backlog: move to httpOnly cookie
-- Rate limiting for auth-endpoints - return 429 Too Many Requests
+- Rate limiting for auth-endpoints - Flask-Limiter to return 429 Too Many Requests
   - backlog
 - <done> CORS not *
 #+begin_src 
@@ -1400,3 +1400,8 @@ help modal(?) can hide the card, possibly okay button or the like.  user operate
 http://localhost:5173,https://achiwa912.pythonanywhere.com
 (vb2-venv) 00:40 ~/vb2 (main)$
 #+end_src
+
+*** backlogs (9/29)
+- JWT storage - move from localStorage  to httpOnly
+- Rate limiting for auth-endpoints - Flask-Limiter to return 429 Too Many Requests
+- github actions for CI
