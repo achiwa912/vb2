@@ -492,6 +492,15 @@ export interface operations {
                     "application/json": components["schemas"]["BookResp"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -751,6 +760,15 @@ export interface operations {
                     "application/json": components["schemas"]["WordResp"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -884,6 +902,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResp"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };

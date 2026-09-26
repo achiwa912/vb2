@@ -1382,6 +1382,21 @@ help modal(?) can hide the card, possibly okay button or the like.  user operate
 
 
 *** Preparing for users (other than me)
-- DB -> WAL, timeout=5000ms
-- max books=20/user
-- max words=1000/book
+**** Scale
+- <done> DB -> WAL, timeout=5000ms
+- <done> max books=20/user
+- <done> max words=1000/book
+
+**** Security
+- <done> ownership check for APIs (Book.user_id == user_id) ... looks fine
+- <done> CSV import size & XSS possibilities in defs, sample sentences
+- JWT storage - localStorage or httpOnly cookie? -> localStorage
+  - backlog: move to httpOnly cookie
+- Rate limiting for auth-endpoints - return 429 Too Many Requests
+  - backlog
+- <done> CORS not *
+#+begin_src 
+(vb2-venv) 00:40 ~/vb2 (main)$ echo $CORS_ORIGINS
+http://localhost:5173,https://achiwa912.pythonanywhere.com
+(vb2-venv) 00:40 ~/vb2 (main)$
+#+end_src

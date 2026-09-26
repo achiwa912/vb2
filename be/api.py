@@ -268,7 +268,12 @@ def list_book_words(path: BookPath) -> tuple[dict[str, str], int]:
 
 @app.post(
     "/importcsv/<int:id>",
-    responses={200: ImportCsvResp, 400: MessageResp, 404: MessageResp},
+    responses={
+        200: ImportCsvResp,
+        400: MessageResp,
+        404: MessageResp,
+        413: MessageResp,
+    },
 )
 @jwt_required()
 def import_csv(path: BookPath, form: ImportCsvReq):
@@ -278,7 +283,15 @@ def import_csv(path: BookPath, form: ImportCsvReq):
     ).scalar_one_or_none()
     if not book:
         return {"message": "Book not found"}, 404
+    word_count = (
+        db.session.scalar(
+            select(func.count()).select_from(Word).where(Word.book_id == path.id)
+        )
+        or 0
+    )
     file = request.files["file"]
+    if request.content_length and request.content_length >= 1048576:  # 1MB
+        return {"message": "File too big"}, 413
     text_data = file.stream.read().decode("utf-8-sig")
 
     try:
@@ -292,6 +305,8 @@ def import_csv(path: BookPath, form: ImportCsvReq):
     errors = []
     added = skipped = failed = 0
     for row in reader:
+        if word_count >= MAX_WORDS:
+            break
         if len(row) == 0:  # blank line?
             # failed += 1
             # errors.append((reader.line_num, "UNKNOWN"))
@@ -313,7 +328,13 @@ def import_csv(path: BookPath, form: ImportCsvReq):
             continue
 
         added += 1
-        w = Word(word=rw, definition=row[1], sample=row[2], book_id=path.id)
+        word_count += 1
+        w = Word(
+            word=rw[:64],
+            definition=row[1][:256],
+            sample=row[2][:256] if len(row) > 2 else "",
+            book_id=path.id,
+        )
         db.session.add(w)
     db.session.commit()
     imprt = ImportCsvResp.model_validate(
