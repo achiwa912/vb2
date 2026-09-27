@@ -1,11 +1,12 @@
 from unittest.mock import patch
-from sqlalchemy import select
+
 from flask import Flask
 from flask.testing import FlaskClient
 from pydantic import BaseModel
+from sqlalchemy import select
 
-from ..models import User  # for type annotation
 from ..database import db
+from ..models import User  # for type annotation
 
 
 class AuthResponse(BaseModel):

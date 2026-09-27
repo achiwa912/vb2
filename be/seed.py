@@ -1,7 +1,6 @@
-from datetime import datetime, timezone
-from .models import User, Book, Word
-from .database import db
 from .api import app
+from .database import db
+from .models import Book, Word
 
 words = [
     {

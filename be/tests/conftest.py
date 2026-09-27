@@ -1,16 +1,17 @@
 import os
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 os.environ["TESTING"] = "1"
 os.environ["JWT_SECRET_KEY"] = "a-very-long-test-secret-key-for-jwt-1234567890"
 
 from collections.abc import Generator
+
 import pytest
-from sqlalchemy.orm import scoped_session
 from flask import Flask
 from flask.testing import FlaskClient
 from flask_jwt_extended import create_access_token
 from flask_sqlalchemy.session import Session
+from sqlalchemy.orm import scoped_session
 
 from ..api import app
 from ..database import db
@@ -35,7 +36,7 @@ def test_app():
 
 
 @pytest.fixture(scope="function")
-def db_session(test_app: Flask) -> Generator[scoped_session[Session], None, None]:
+def db_session(test_app: Flask) -> Generator[scoped_session[Session]]:
     """Provides a clean database for each test."""
     with test_app.app_context():
         db.session.remove()

@@ -1,8 +1,10 @@
-from typing import ClassVar, Literal
-from datetime import datetime, timezone
-from pydantic import BaseModel, ConfigDict, field_serializer, Field
+from datetime import UTC, datetime
+from typing import ClassVar
+
 from flask_openapi3.models.file import FileStorage
-from .models import PracStat, PracDir
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
+
+from .models import PracDir, PracStat
 
 
 class BookSchema(BaseModel):
@@ -19,7 +21,7 @@ class BookSchema(BaseModel):
         if dt is None:
             return dt
         if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
+            return dt.replace(tzinfo=UTC)
         return dt
 
 
@@ -35,7 +37,7 @@ class WordSchema(BaseModel):
     @field_serializer("last_edited")
     def serialize_last_edited(self, dt: datetime) -> datetime:
         if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
+            return dt.replace(tzinfo=UTC)
         return dt
 
 
@@ -56,7 +58,7 @@ class PracticeSchema(BaseModel):
         if dt is None:
             return dt
         if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
+            return dt.replace(tzinfo=UTC)
         return dt
 
 

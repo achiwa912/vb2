@@ -1,13 +1,14 @@
-from datetime import datetime, UTC, timezone, timedelta
-from zoneinfo import ZoneInfo
+from datetime import UTC, datetime, timedelta, timezone
 from typing import cast
+from zoneinfo import ZoneInfo
+
 from flask import Flask
 from flask.testing import FlaskClient
 from pydantic import TypeAdapter
 
-from ..models import Book, Practice, User, Word, PracDir, PracStat
 from ..database import db
-from ..schemas import BookSchema, WordSchema, PracticeSchema, SyncBookReq, SyncBookResp
+from ..models import Book, PracDir, PracStat, Practice, User, Word
+from ..schemas import PracticeSchema, SyncBookReq
 
 
 def test_sync_conflict_incoming_newer_wins(
@@ -23,9 +24,7 @@ def test_sync_conflict_incoming_newer_wins(
     (`wd_last_practiced`/`dw_last_practiced`) should reflect the incoming
     `last_practiced` if it is later.
     """
-    dt_utc = datetime(
-        2026, 9, 1, 15, 30, tzinfo=timezone.utc
-    )  # 2026-09-01 15:30:00+00:00
+    dt_utc = datetime(2026, 9, 1, 15, 30, tzinfo=UTC)  # 2026-09-01 15:30:00+00:00
     dt_jst_new = datetime(
         2026, 9, 10, 15, 30, tzinfo=timezone(timedelta(hours=9))
     )  # 2026-09-10 15:30:00+09:00
@@ -85,13 +84,13 @@ def test_sync_conflict_incoming_newer_wins(
         last_practiced_str: str = cast(
             str, pracs[0].model_dump(mode="json")["last_practiced"]
         )
-        parsed = datetime.fromisoformat(last_practiced_str.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(last_practiced_str)
         assert prac.last_practiced == parsed.replace(tzinfo=None)
         assert book.wd_last_practiced == parsed.replace(tzinfo=None)
         last_edited_str: str = cast(
             str, pracs[0].model_dump(mode="json")["last_edited"]
         )
-        parsed = datetime.fromisoformat(last_edited_str.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(last_edited_str)
         assert prac.last_edited == parsed.replace(tzinfo=None)
 
 
@@ -106,7 +105,7 @@ def test_sync_conflict_server_newer_wins(
     incoming practice, the incoming changes should be ignored. Server data
     remains unchanged and the response should reflect server values.
     """
-    dt_utc = datetime(2026, 9, 1, 15, 30, tzinfo=timezone.utc)
+    dt_utc = datetime(2026, 9, 1, 15, 30, tzinfo=UTC)
     dt_jst = dt_utc.astimezone(ZoneInfo("Asia/Tokyo"))  # jst
     dt_jst_old = datetime(2026, 8, 20, 15, 30, tzinfo=timezone(timedelta(hours=9)))
     with test_app.app_context():
@@ -165,12 +164,12 @@ def test_sync_conflict_server_newer_wins(
         last_practiced_str: str = cast(
             str, pracs[0].model_dump(mode="json")["last_practiced"]
         )
-        parsed = datetime.fromisoformat(last_practiced_str.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(last_practiced_str)
         assert prac.last_practiced == parsed.replace(tzinfo=None)
         last_edited_str: str = cast(
             str, pracs[0].model_dump(mode="json")["last_edited"]
         )
-        parsed = datetime.fromisoformat(last_edited_str.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(last_edited_str)
         assert prac.last_edited == parsed.replace(tzinfo=None)
 
         assert book.wd_last_practiced == dt_utc.replace(tzinfo=None)
@@ -188,8 +187,8 @@ def test_sync_conflict_status_learning_overrides_new(
     status "new". The transition from "new" to "learning" takes precedence
     over timestamp comparison.
     """
-    dt_utc = datetime(2026, 9, 1, 15, 30, tzinfo=timezone.utc)
-    dt_jst = dt_utc.astimezone(ZoneInfo("Asia/Tokyo"))  # jst
+    dt_utc = datetime(2026, 9, 1, 15, 30, tzinfo=UTC)
+    # dt_jst = dt_utc.astimezone(ZoneInfo("Asia/Tokyo"))  # jst
     dt_jst_old = datetime(2026, 8, 20, 15, 30, tzinfo=timezone(timedelta(hours=9)))
     with test_app.app_context():
         book = Book(name="test1", user_id=user1.id)
@@ -247,12 +246,12 @@ def test_sync_conflict_status_learning_overrides_new(
         last_practiced_str: str = cast(
             str, pracs[0].model_dump(mode="json")["last_practiced"]
         )
-        parsed = datetime.fromisoformat(last_practiced_str.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(last_practiced_str)
         assert prac.last_practiced == parsed.replace(tzinfo=None)
         last_edited_str: str = cast(
             str, pracs[0].model_dump(mode="json")["last_edited"]
         )
-        parsed = datetime.fromisoformat(last_edited_str.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(last_edited_str)
         assert prac.last_edited == parsed.replace(tzinfo=None)
 
 
@@ -267,12 +266,8 @@ def test_sync_conflict_multiple_directions_updates_aggregates_correctly(
     `wd_last_practiced` and `dw_last_practiced` should be updated only from
     the corresponding direction's winning practices, not cross-contaminated.
     """
-    dt_wd_utc = datetime(
-        2026, 9, 1, 15, 30, tzinfo=timezone.utc
-    )  # 2026-09-01 15:30:00+00:00
-    dt_dw_utc = datetime(
-        2026, 9, 1, 8, 00, tzinfo=timezone.utc
-    )  # 2026-09-01 8:00:00+00:00
+    dt_wd_utc = datetime(2026, 9, 1, 15, 30, tzinfo=UTC)  # 2026-09-01 15:30:00+00:00
+    dt_dw_utc = datetime(2026, 9, 1, 8, 00, tzinfo=UTC)  # 2026-09-01 8:00:00+00:00
     dt_wd_jst_new = datetime(
         2026, 9, 10, 15, 30, tzinfo=timezone(timedelta(hours=9))
     )  # 2026-09-10 15:30:00+09:00
@@ -353,13 +348,13 @@ def test_sync_conflict_multiple_directions_updates_aggregates_correctly(
         last_practiced_str: str = cast(
             str, pracs[0].model_dump(mode="json")["last_practiced"]
         )
-        parsed = datetime.fromisoformat(last_practiced_str.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(last_practiced_str)
         assert prac_wd.last_practiced == parsed.replace(tzinfo=None)
         assert book.wd_last_practiced == parsed.replace(tzinfo=None)
         last_edited_str: str = cast(
             str, pracs[0].model_dump(mode="json")["last_edited"]
         )
-        parsed = datetime.fromisoformat(last_edited_str.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(last_edited_str)
         assert prac_wd.last_edited == parsed.replace(tzinfo=None)
 
         assert pracs[1].id == prac_dw.id
@@ -371,9 +366,9 @@ def test_sync_conflict_multiple_directions_updates_aggregates_correctly(
         last_practiced_str = cast(
             str, pracs[1].model_dump(mode="json")["last_practiced"]
         )
-        parsed = datetime.fromisoformat(last_practiced_str.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(last_practiced_str)
         assert prac_dw.last_practiced == parsed.replace(tzinfo=None)
         assert book.dw_last_practiced == parsed.replace(tzinfo=None)
         last_edited_str = cast(str, pracs[1].model_dump(mode="json")["last_edited"])
-        parsed = datetime.fromisoformat(last_edited_str.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(last_edited_str)
         assert prac_dw.last_edited == parsed.replace(tzinfo=None)

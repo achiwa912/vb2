@@ -1,49 +1,49 @@
-import os
-import io
-from datetime import UTC, timedelta, datetime, timezone
-from struct import iter_unpack
-from dotenv import load_dotenv
 import csv
-from sqlalchemy import select, func
-from sqlalchemy.orm import selectinload
+import io
+import os
+from datetime import UTC, datetime, timedelta
 
+from dotenv import load_dotenv
 from flask import request
 
 # from flask_pydantic import validate
 from flask_cors import CORS
-from flask_openapi3 import OpenAPI, Info
 from flask_jwt_extended import (
     JWTManager,
     create_access_token,
-    jwt_required,
     get_jwt_identity,
+    jwt_required,
 )
+from flask_openapi3 import Info, OpenAPI
 from google.auth.transport import requests
 from google.oauth2 import id_token
+from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
+
 from .database import db
-from .models import User, Book, Word, Practice, PracDir
+from .models import Book, PracDir, Practice, User, Word
 from .schemas import (
+    BookPath,
+    BookResp,
+    BookSchema,
+    CreateBookReq,
+    CreateWordReq,
+    ExportResp,
     GglAuthReq,
     GglAuthResp,
-    CreateBookReq,
-    PatchBookReq,
-    BookResp,
-    ListBooksResp,
-    ListWordsResp,
-    BookPath,
-    WordPath,
-    CreateWordReq,
-    PatchWordReq,
-    WordResp,
-    SyncBookReq,
-    SyncBookResp,
-    BookSchema,
-    WordSchema,
-    PracticeSchema,
-    MessageResp,
-    ExportResp,
     ImportCsvReq,
     ImportCsvResp,
+    ListBooksResp,
+    ListWordsResp,
+    MessageResp,
+    PatchBookReq,
+    PatchWordReq,
+    PracticeSchema,
+    SyncBookReq,
+    SyncBookResp,
+    WordPath,
+    WordResp,
+    WordSchema,
 )
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -167,7 +167,7 @@ def edit_word(path: WordPath, body: PatchWordReq) -> tuple[dict[str, str], int]:
         w.definition = body.definition
     if body.sample is not None:
         w.sample = body.sample
-    w.last_edited = datetime.now(timezone.utc)
+    w.last_edited = datetime.now(UTC)
     db.session.commit()
     return WordResp.model_validate({"word": w}).model_dump(mode="json"), 200
 
@@ -226,7 +226,7 @@ def edit_book(path: BookPath, body: PatchBookReq) -> tuple[dict[str, str], int]:
     if not b:
         return {"message": "Book not found"}, 404
     b.name = body.name
-    b.last_edited = datetime.now(timezone.utc)
+    b.last_edited = datetime.now(UTC)
     db.session.commit()
     return BookResp.model_validate({"book": b}).model_dump(mode="json"), 200
 
@@ -355,8 +355,7 @@ def import_all(body: ExportResp):
         if sb:
             bookid_map[ib.id] = sb.id
             edited = ib.last_edited.astimezone(UTC).replace(tzinfo=None)
-            if sb.last_edited < edited:
-                sb.last_edited = edited
+            sb.last_edited = max(sb.last_edited, edited)
             if ib.wd_last_practiced:
                 wd_practiced = ib.wd_last_practiced.astimezone(UTC).replace(tzinfo=None)
                 if not sb.wd_last_practiced or sb.wd_last_practiced < wd_practiced:
@@ -418,8 +417,7 @@ def import_all(body: ExportResp):
         if ip.last_practiced:
             practiced = ip.last_practiced.astimezone(UTC).replace(tzinfo=None)
         if sp:
-            if sp.last_edited < edited:
-                sp.last_edited = edited
+            sp.last_edited = max(sp.last_edited, edited)
             if practiced and (not sp.last_practiced or sp.last_practiced < practiced):
                 sp.last_practiced = practiced
                 sp.due_dates = ip.due_dates
@@ -574,6 +572,7 @@ def sync_book(path: BookPath, body: SyncBookReq) -> tuple[dict[str, str], int]:
 # Serve the built Vue frontend (production only)
 # ---------------------------------------------------------------------------
 import os as _os
+
 from flask import send_from_directory
 
 if _os.environ.get("SERVE_FRONTEND") == "1":

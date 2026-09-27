@@ -1,12 +1,15 @@
-from enum import Enum
 from datetime import datetime
-from sqlalchemy import Integer, String, ForeignKey, DateTime, func, UniqueConstraint
+from enum import Enum
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import (
-    Mapped,
-    mapped_column as mc,
-    relationship,
     DeclarativeBase,
+    Mapped,
     MappedAsDataclass,
+    relationship,
+)
+from sqlalchemy.orm import (
+    mapped_column as mc,
 )
 from sqlalchemy.sql.schema import SchemaItem
 

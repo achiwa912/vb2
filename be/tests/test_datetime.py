@@ -1,12 +1,13 @@
-from datetime import UTC, datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from typing import cast
+
 from flask import Flask
 from flask.testing import FlaskClient
-from sqlalchemy import select
 from pydantic import TypeAdapter
+from sqlalchemy import select
 
 from ..database import db
-from ..models import Book, Word, Practice, User
+from ..models import Book, Practice, User, Word
 from ..schemas import BookSchema, PracticeSchema, WordSchema
 
 """
@@ -51,7 +52,7 @@ def test_edit_book_normalizes_datetime_to_utc_and_serializes_z(
     )  # depends on field_serializer for adding 'Z'
     assert last_edited_str.endswith("Z")
 
-    parsed = datetime.fromisoformat(last_edited_str.replace("Z", "+00:00"))
+    parsed = datetime.fromisoformat(last_edited_str)
     assert parsed.tzinfo is not None
     assert parsed.tzinfo == UTC
 
@@ -96,7 +97,7 @@ def test_create_word_normalizes_datetime(
     last_edited_str: str = cast(str, word_data.model_dump(mode="json")["last_edited"])
     assert last_edited_str.endswith("Z")
 
-    parsed = datetime.fromisoformat(last_edited_str.replace("Z", "+00:00"))
+    parsed = datetime.fromisoformat(last_edited_str)
     assert parsed.tzinfo is not None
     assert parsed.tzinfo == UTC
 
@@ -166,10 +167,10 @@ def test_sync_book_normalizes_practice_datetimes(
     )
     assert last_practiced_str.endswith("Z")
 
-    edited_parsed = datetime.fromisoformat(last_edited_str.replace("Z", "+00:00"))
+    edited_parsed = datetime.fromisoformat(last_edited_str)
     assert edited_parsed.tzinfo is not None
     assert edited_parsed.tzinfo == UTC
-    practiced_parsed = datetime.fromisoformat(last_practiced_str.replace("Z", "+00:00"))
+    practiced_parsed = datetime.fromisoformat(last_practiced_str)
     assert practiced_parsed.tzinfo is not None
     assert practiced_parsed.tzinfo == UTC
 

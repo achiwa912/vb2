@@ -1419,3 +1419,10 @@ http://localhost:5173,https://achiwa912.pythonanywhere.com
 #+begin_src 
   "ignorePatterns": ["dist/**"]
 #+end_src
+
+*** ruff
+#+begin_src 
+cd be
+uv add --dev ruff
+uv run ruff check .
+#+end_src

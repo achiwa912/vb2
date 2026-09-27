@@ -3,6 +3,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.interfaces import DBAPIConnection
 from sqlalchemy.pool import ConnectionPoolEntry
+
 from .models import Base
 
 db = SQLAlchemy(model_class=Base, session_options={"expire_on_commit": False})

@@ -1,6 +1,7 @@
 import json
-from datetime import datetime
-from .schemas import BookSchema, WordSchema, ExportResp
+from datetime import UTC, datetime
+
+from .schemas import BookSchema, ExportResp, WordSchema
 
 with open("/vocabull.json", "r") as f:
     old_data = json.load(f)
@@ -9,11 +10,11 @@ books = []
 words = []
 bix = 1
 wix = 1
-for book_name in old_data.keys():
+for book_name in old_data:
     b = BookSchema(
         id=bix,
         name=book_name,
-        last_edited=datetime.now(),
+        last_edited=datetime.now(UTC),
         wd_last_practiced=None,
         dw_last_practiced=None,
         user_id=1,
@@ -25,7 +26,7 @@ for book_name in old_data.keys():
             word=word[0] if word[0] else f"dummy{wix}",
             definition=word[1] if len(word) > 1 else "",
             sample=word[2] if len(word) > 2 else "",
-            last_edited=datetime.now(),
+            last_edited=datetime.now(UTC),
             book_id=bix,
         )
         words.append(w)

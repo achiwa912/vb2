@@ -1,13 +1,14 @@
 from collections.abc import Sequence
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+
 from flask import Flask
 from flask.testing import FlaskClient
-from sqlalchemy import select
 from pydantic import TypeAdapter
+from sqlalchemy import select
 
 from ..database import db
-from ..models import Book, Word, Practice, User
-from ..schemas import BookSchema, PracticeSchema, WordSchema, ExportResp
+from ..models import Book, Practice, User, Word
+from ..schemas import BookSchema, ExportResp, PracticeSchema, WordSchema
 from .conftest import to_naive_utc
 
 
