@@ -185,7 +185,7 @@ export const useBooksStore = defineStore('books', () => {
   }
   
   function createWordsNoPrac() {
-    let wnp: number[] = [...Array(words.value.length).keys()]
+    const wnp: number[] = [...Array(words.value.length).keys()]
     for (const prac of pracs.value) {
       if (prac.direction == pracDir.value) {
 	const ixDel = wnp.indexOf(id2ixWord(prac.word_id) ?? -1)
@@ -217,7 +217,7 @@ export const useBooksStore = defineStore('books', () => {
       const lastp = books.value[bookIndex]?.dw_last_practiced
       if (!isNextDayOrLater(lastp ? new Date(lastp) : null)) return
     }
-    for (let prac of pracs.value) {
+    for (const prac of pracs.value) {
       if (pracDir.value == prac.direction && prac.status == 'review') {
 	const oldCnt = prac.due_counter
 	prac.due_counter = Math.max((prac.due_counter ?? 0)-1, 0)

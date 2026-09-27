@@ -3,8 +3,7 @@ import { ref, onMounted, onUnmounted, computed, reactive, watch, nextTick } from
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { PracEngine } from '@/lib/pracengine'
-import { ThumbsUp, ThumbsDown, SkipForward, Music, Music2, Music3, RefreshCw, Check, X, SquarePen, Undo2 } from '@lucide/vue'
-import type { components } from '@/types/api'
+import { ThumbsUp, ThumbsDown, SkipForward, Music, Music3, RefreshCw, Check, X, SquarePen, Undo2 } from '@lucide/vue'
 import Navbar from '@/components/Navbar.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 
@@ -34,7 +33,6 @@ const onMqChange = (e: MediaQueryListEvent) => { prefersReducedMotion.value = e.
 const infoMem = computed(() => engine.infoMem)
 const infoTried = computed(() => engine.infoTried)
 
-const infoDue = computed(() => engine.getInfoDue())
 const infoRemain = computed(() => engine.getInfoRemain())
 const infoWithin3 = computed(() => engine.getInfoWithin3())
 
@@ -49,15 +47,14 @@ const currentWord = computed(() => {
   return booksStore.words[idx] ?? null
 })
 
-const currentPrac = computed(() => {
-  if (engine.lw[0] == null) return null
-  return booksStore.pracs[engine.lw[0]] ?? null
-})
-
 const flipCard = () => {
   engine.isFlipped = !engine.isFlipped
   if (!isAutoplay.value) return
-  engine.isFlipped ? speakRest() : speakFront()
+  if (engine.isFlipped) {
+    speakRest()
+  } else {
+    speakFront()
+  }
 }
 
 async function manualSync() {
@@ -321,7 +318,11 @@ watch(isAutoplay, (on) => {
     return
   }
   if (engine.pracIdx == null) return
-  engine.isFlipped ? speakRest() : speakFront()
+  if (engine.isFlipped) {
+    speakRest()
+  } else {
+    speakFront()
+  }
 })
 
 onBeforeRouteLeave(async () => {

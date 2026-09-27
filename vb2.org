@@ -1405,3 +1405,17 @@ http://localhost:5173,https://achiwa912.pythonanywhere.com
 - JWT storage - move from localStorage  to httpOnly
 - Rate limiting for auth-endpoints - Flask-Limiter to return 429 Too Many Requests
 - github actions for CI
+
+*** pnpm run lint
+- change fe/package.json
+#+begin_src 
+    "lint": "run-s lint:oxlint lint:eslint",
+    "lint:oxlint": "oxlint .",
+    "lint:oxlint:fix": "oxlint . --fix",
+    "lint:eslint": "eslint .",
+    "lint:eslint:fix": "eslint . --fix --cache",
+#+end_src
+- add to fe/.oxlintrc.json
+#+begin_src 
+  "ignorePatterns": ["dist/**"]
+#+end_src

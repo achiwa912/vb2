@@ -76,16 +76,6 @@ const numReviewDw = computed(() => {
   return cnt ?? 0
 })
 
-const numLearning = computed((dir) => {
-  if (!bix) return 0
-  let cnt = 0
-  for (const prac of booksStore.pracs) {
-    if (prac.direction == dir && (prac.status == 'learning' || prac.status == 'waiting')) {
-      cnt += 1
-    }
-  }
-  return cnt ?? 0
-})
 
 const numLearningWd = computed(() => {
   if (!bix) return 0
@@ -192,7 +182,7 @@ async function importCsv(event: Event) {
   
   const { data, error, response } = await client.POST(`/importcsv/{id}`, {
     params: { path: { id: currentBook.value.id } },
-    body: formData as any,
+    body: formData as unknown as { file: string },
   })
   if (error) {
     if ('message' in error) {

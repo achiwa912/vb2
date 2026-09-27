@@ -156,7 +156,7 @@ onMounted(async () => {
       <button @click="openModal(null)" class="btn btn-secondary btn-outline btn-sm rounded-3xl">Add book</button>
     </div>
     
-    <div v-for="book in booksStore.books">
+    <div v-for="book in booksStore.books" :key="book.id">
       <div @click="wordsView(book.id)" class="card card-lg card-border bg-base-100 mt-4 hover:bg-base-200 border border-base-300 rounded-3xl px-6 transition-all duration-300 hover:shadow-xl cursor-pointer flex">
 	<div class="card-body">
 	  <div class="flex items-center justify-between">
