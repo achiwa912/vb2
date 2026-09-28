@@ -14,6 +14,8 @@ from flask_jwt_extended import (
     get_jwt_identity,
     jwt_required,
 )
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_openapi3 import Info, OpenAPI
 from google.auth.transport import requests
 from google.oauth2 import id_token
@@ -68,6 +70,17 @@ origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 CORS(app, origins=origins)
 # CORS(app, origins=["http://localhost:5173"])
 
+
+def client_ip() -> str:  # for PythonAnywhere
+    return request.headers.get("X-Real-IP", get_remote_address())
+
+
+limiter = Limiter(
+    key_func=client_ip,
+    app=app,
+    default_limits=[],
+)
+
 jwt = JWTManager(app)
 db.init_app(app)
 
@@ -77,6 +90,7 @@ if __name__ == "__main__":
 
 
 @app.post("/auth/ggl", responses={200: GglAuthResp, 401: MessageResp})
+@limiter.limit("10 per minute")
 def auth_ggl(body: GglAuthReq) -> tuple[dict[str, str], int]:
     try:
         id_info = id_token.verify_oauth2_token(

@@ -1401,10 +1401,10 @@ http://localhost:5173,https://achiwa912.pythonanywhere.com
 (vb2-venv) 00:40 ~/vb2 (main)$
 #+end_src
 
-*** backlogs (9/29)
+*** backlogs (9/26)
 - JWT storage - move from localStorage  to httpOnly
 - Rate limiting for auth-endpoints - Flask-Limiter to return 429 Too Many Requests
-- github actions for CI
+- <done> github actions for CI
 
 *** pnpm run lint
 - change fe/package.json
@@ -1420,9 +1420,24 @@ http://localhost:5173,https://achiwa912.pythonanywhere.com
   "ignorePatterns": ["dist/**"]
 #+end_src
 
+: pnpm run lint
+
 *** ruff
 #+begin_src 
 cd be
 uv add --dev ruff
 uv run ruff check .
 #+end_src
+
+*** Flask-Limiter
+- https://flask-limiter.readthedocs.io/en/stable/
+#+begin_src 
+uv add Flask-Limiter
+#+end_src
+
+- https://help.pythonanywhere.com/pages/WebAppClientIPAddresses
+#+begin_quote
+Our loadbalancer puts the real IP address that we received the request from into the X-Real-IP header, which you can access like this in Flask:
+
+request.headers['X-Real-IP']
+#+end_quote
