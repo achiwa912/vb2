@@ -24,6 +24,7 @@ export default defineConfig({
       '/words': 'http://localhost:8000',
       '/prac': 'http://localhost:8000',
       '/sync': 'http://localhost:8000',
+      '/logout': 'http://localhost:8000',
     },
   },
 })

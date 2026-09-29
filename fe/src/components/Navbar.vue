@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useUserStore } from '@/stores/user'
+import { client } from '@/api/client'
 
 const router = useRouter()
 const route = useRoute()
@@ -15,7 +16,8 @@ const activeBook = computed(() => {
   return ix === null ? undefined : booksStore.books[ix]
 })
 
-function logout() {
+async function logout() {
+  await client.POST('/logout')
   userStore.unsetUser()
   router.push('/login')
 }

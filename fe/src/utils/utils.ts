@@ -1,3 +1,11 @@
+export function getCsrf() {
+  return document.cookie
+    .split("; ")
+    .find(c => c.startsWith("csrf_access_token="))
+    ?.split("=")[1]
+}
+
+
 // ====== format ===========================================
 
 export function formatBytes(bytes: number | null | undefined) {

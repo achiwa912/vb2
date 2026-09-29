@@ -1441,3 +1441,73 @@ Our loadbalancer puts the real IP address that we received the request from into
 
 request.headers['X-Real-IP']
 #+end_quote
+
+- on PythonAnywhere, 
+  - This is important!!  Otherwise, it installs on a wrong virtualenv.
+#+begin_src 
+UV_PROJECT_ENVIRONMENT=/home/achiwa912/.virtualenvs/vb2-venv uv sync --no-install-project --python 3.13
+#+end_src
+
+
+#+begin_src 
+```
+vb2 (vocaBull) - task: move JWT storage from localStorage to httpOnly cookie
+
+Stack
+- Backend: Flask (flask_openapi3 OpenAPI app), Flask-JWT-Extended, Flask-Limiter, Flask-CORS, SQLAlchemy/SQLite (WAL), Python 3.13, uv
+- Frontend: Vue 3 + TypeScript + Pinia + Tailwind/DaisyUI, pnpm
+- Auth: Google OAuth. POST /auth/ggl verifies the Google id token, creates the user if needed, and returns
+  {user_id, access_token, email, name} (JWT via create_access_token, identity=str(user.id), 14-day expiry)
+- Routes are protected with @jwt_required() and use get_jwt_identity()
+- Backend file: be/api.py (run in dev: flask --app be.api:app run --port 8000 --debug)
+
+Current state (to be replaced)
+- Frontend useUserStore (Pinia) holds user_id, email, name, access_token
+- loadUser() reads the whole user object, including access_token, from localStorage key 'user'
+- Auth middleware onResponse treats both 401 and 422 as auth failure and force-logs-out (worth narrowing to 401)
+
+Environment facts
+- Production: frontend and API are served from the same PythonAnywhere web app (same origin),
+  https://achiwa912.pythonanywhere.com
+- Dev: the Vite dev server (localhost:5173) proxies /auth, /books, /words, /prac, /sync to
+  http://localhost:8000, so dev is also same-origin
+- CORS_ORIGINS env var is set correctly in prod; no CORS credentials needed for same-origin
+- Limiter key: X-Real-IP header with get_remote_address fallback (PA sets the header)
+- Cookie flags: SameSite=Lax/Strict is fine; Secure must be off in dev (plain http), on in prod
+
+Open decision
+- CSRF protection now that the browser attaches the cookie automatically:
+  Flask-JWT-Extended's built-in cookie support with double-submit CSRF token, vs relying on SameSite alone
+
+Preferences
+- Socratic, one problem at a time, concise replies
+- I write all code myself; do not provide code unless I explicitly ask
+- Answer the immediate question only, no piled-on options or next steps
+```
+#+end_src
+
+*** move JWT from localStorage to HttpOnly cookie
+- https://flask-jwt-extended.readthedocs.io/en/stable/token_locations.html
+- Flask-JWT-Extended uses double-submit verification technique
+- Use 2 cookies
+  - JWT in HttpOnly, Secure, SameSite=Lax
+    - browser automatically attach this
+      - SameSite=Lax prevents from attaching if not same site
+      - Secure enforces https
+    - HttpOnly -> JS can't access
+    - safe from JWT theft
+  - random string(?) in X-CSRF-TOKEN cookie
+    - my server needs to compare <CSRF_VALUE> in cookie and in X-CSRF-TOKEN
+    - malicious site can't access because same-origin policy
+#+begin_src 
+POST /api/books
+Cookie: access_token_cookie=<JWT>  <-- HttpOnly
+       csrf_access_token=<CSRF_VALUE>  <-- Non-HttpOnly (JS needs to read)
+X-CSRF-TOKEN: <CSRF_VALUE>
+#+end_src
+
+#+begin_src 
+uv add flask-jwt-extended  # I already have
+#+end_src
+
+- fetch() for PUT, PATCH, POST, DELETE - credentials: 'same-origin'  // doesn't have to be 'include' for vb2

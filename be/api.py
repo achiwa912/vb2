@@ -4,7 +4,7 @@ import os
 from datetime import UTC, datetime, timedelta
 
 from dotenv import load_dotenv
-from flask import request
+from flask import jsonify, request
 
 # from flask_pydantic import validate
 from flask_cors import CORS
@@ -13,6 +13,8 @@ from flask_jwt_extended import (
     create_access_token,
     get_jwt_identity,
     jwt_required,
+    set_access_cookies,
+    unset_jwt_cookies,
 )
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -65,6 +67,14 @@ else:
 
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=14)
+app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
+app.config["JWT_COOKIE_CSRF_PROTECT"] = True
+app.config["JWT_COOKIE_SAMESITE"] = "Lax"
+
+if os.getenv("PYTHONANYWHERE_SITE"):
+    app.config["JWT_COOKIE_SECURE"] = True  # https only
+else:
+    app.config["JWT_COOKIE_SECURE"] = False
 
 origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 CORS(app, origins=origins)
@@ -91,7 +101,7 @@ if __name__ == "__main__":
 
 @app.post("/auth/ggl", responses={200: GglAuthResp, 401: MessageResp})
 @limiter.limit("10 per minute")
-def auth_ggl(body: GglAuthReq) -> tuple[dict[str, str], int]:
+def auth_ggl(body: GglAuthReq):
     try:
         id_info = id_token.verify_oauth2_token(
             body.token, requests.Request(), os.getenv("GGL_CLIENT_ID")
@@ -108,17 +118,24 @@ def auth_ggl(body: GglAuthReq) -> tuple[dict[str, str], int]:
         db.session.add(user)
         db.session.commit()
     atoken = create_access_token(identity=str(user.id))
-    return (
-        GglAuthResp.model_validate(
-            {
-                "user_id": user.id,
-                "access_token": atoken,
-                "email": user.email,
-                "name": user.name,
-            }
-        ).model_dump(mode="json"),
-        200,
-    )
+    resp_body = GglAuthResp.model_validate(
+        {
+            "user_id": user.id,
+            "email": user.email,
+            "name": user.name,
+        }
+    ).model_dump(mode="json")
+    resp = jsonify(resp_body)
+    set_access_cookies(resp, atoken)
+    return resp  # 200 is assumed
+
+
+@app.post("/logout", responses={200: None})
+@limiter.limit("10 per minute")
+def logout():
+    resp = jsonify(None)
+    unset_jwt_cookies(resp)
+    return resp  # 200 is assumed
 
 
 @app.get("/books", responses={200: ListBooksResp})

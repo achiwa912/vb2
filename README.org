@@ -188,13 +188,14 @@ vb2/
 Configured github actions to automatically run lints (eslint/ruff) and tests (fe/backend) on git push.
 
 * Scalability and Security
-- vb2 uses sqlite3 with WAL enabled and timeout=5000ms.  Migrating to Postgres is a backlog item.  
+- vb2 uses sqlite3 with WAL enabled and timeout=5000ms.  Migrating to Postgres is a *backlog* item for a future release (when migrating from PythonAnywhere)
 - Guarded max numbers of books and words to 20 and 1000 respectively.
 - Checked ownership for API endpoints
 - Guarded max CSV file import size to 1MB
-- Confirmed CORS doesn't use '*'
-- Currently vb2 stores JWT in localStorage \to backlog - move to httpOnly
-- Currently no rate limiting for the auth-endpoint \to backlog - support Flask-Limiter to return 429 Too Many Requests
+- Confirmed CORS doesn't use =*=
+- Protected JWT from CSRF and stolen by XSS
+  - JWT stored in HttpOnly cookie and csrf token in cookie & X-CSRF-TOKEN header
+- Rate limiting the auth endpoint with Flask-Limiter (10/min)
 
 * Learning Method
 
@@ -208,10 +209,8 @@ Crucially, vb2 uses *relative day counters* rather than absolute due dates, so t
 The goal: a kinder, more lenient alternative to strict SRS apps.
 
 * Roadmap/backlog
-- [ ] Stabilize alpha
-- [ ] Migrate to Postgres
-- [ ] Move JWT storage from localStorage to httpOnly
-- [ ] Support Flask-Limiter for the auth-endpoint
+- Stabilize alpha
+- Migrate to Postgres (future item; not for PythonAnywhere)
 
 * Related Links
 

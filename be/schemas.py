@@ -68,7 +68,7 @@ class GglAuthReq(BaseModel):
 
 class GglAuthResp(BaseModel):
     user_id: int
-    access_token: str
+    # access_token: str  # migrate JWT from localStorage to HttpOnly cookie
     email: str
     name: str
 
