@@ -15,7 +15,7 @@ def test_sync_conflict_incoming_newer_wins(
     test_app: Flask,
     client: FlaskClient,
     user1: User,
-    auth_headers1: dict[str, str],
+    csrf_headers1: dict[str, str],
 ) -> None:
     """
     When an incoming practice has a newer `last_edited` than the server's
@@ -66,7 +66,7 @@ def test_sync_conflict_incoming_newer_wins(
         resp = client.post(
             f"/sync/{book.id}",
             json=sync_payload.model_dump(mode="json"),
-            headers=auth_headers1,
+            headers=csrf_headers1,
         )
         assert resp.status_code == 200
 
@@ -98,7 +98,7 @@ def test_sync_conflict_server_newer_wins(
     test_app: Flask,
     client: FlaskClient,
     user1: User,
-    auth_headers1: dict[str, str],
+    csrf_headers1: dict[str, str],
 ) -> None:
     """
     When the server's existing practice has a newer `last_edited` than the
@@ -146,7 +146,7 @@ def test_sync_conflict_server_newer_wins(
         resp = client.post(
             f"/sync/{book.id}",
             json=sync_payload.model_dump(mode="json"),
-            headers=auth_headers1,
+            headers=csrf_headers1,
         )
         assert resp.status_code == 200
 
@@ -179,7 +179,7 @@ def test_sync_conflict_status_learning_overrides_new(
     test_app: Flask,
     client: FlaskClient,
     user1: User,
-    auth_headers1: dict[str, str],
+    csrf_headers1: dict[str, str],
 ) -> None:
     """
     Even if the server's practice has a newer `last_edited`, an incoming
@@ -228,7 +228,7 @@ def test_sync_conflict_status_learning_overrides_new(
         resp = client.post(
             f"/sync/{book.id}",
             json=sync_payload.model_dump(mode="json"),
-            headers=auth_headers1,
+            headers=csrf_headers1,
         )
         assert resp.status_code == 200
 
@@ -259,7 +259,7 @@ def test_sync_conflict_multiple_directions_updates_aggregates_correctly(
     test_app: Flask,
     client: FlaskClient,
     user1: User,
-    auth_headers1: dict[str, str],
+    csrf_headers1: dict[str, str],
 ) -> None:
     """
     When syncing practices for both directions (wd and dw), the book's
@@ -330,7 +330,7 @@ def test_sync_conflict_multiple_directions_updates_aggregates_correctly(
         resp = client.post(
             f"/sync/{book.id}",
             json=sync_payload.model_dump(mode="json"),
-            headers=auth_headers1,
+            headers=csrf_headers1,
         )
         assert resp.status_code == 200
 

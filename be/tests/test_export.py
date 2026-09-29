@@ -15,10 +15,11 @@ from .conftest import to_naive_utc
 def test_export_import_roundtrip_different_users(
     test_app: Flask,
     client: FlaskClient,
+    client2: FlaskClient,
     user1: User,
     user2: User,
-    auth_headers1: dict[str, str],
-    auth_headers2: dict[str, str],
+    csrf_headers1: dict[str, str],
+    csrf_headers2: dict[str, str],
 ) -> None:
     """
     Export and import as a different user.  Check if they match.
@@ -49,7 +50,7 @@ def test_export_import_roundtrip_different_users(
         prac_id = prac.id
 
     # export
-    resp_exp = client.get("/export", headers=auth_headers1)
+    resp_exp = client.get("/export", headers=csrf_headers1)
     assert resp_exp.status_code == 200
 
     adapter_b = TypeAdapter(list[BookSchema])
@@ -94,10 +95,10 @@ def test_export_import_roundtrip_different_users(
     # import as a different user
     export_data = ExportResp.model_validate(resp_exp.get_json())
     export_payload = export_data.model_dump(mode="json")
-    resp_imp = client.post(
+    resp_imp = client2.post(
         "/import",
         json=export_payload,
-        headers=auth_headers2,
+        headers=csrf_headers2,
     )
     assert resp_imp.status_code == 200
 

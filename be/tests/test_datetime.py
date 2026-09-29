@@ -19,7 +19,7 @@ from ..schemas import BookSchema, PracticeSchema, WordSchema
 
 
 def test_edit_book_normalizes_datetime_to_utc_and_serializes_z(
-    test_app: Flask, client: FlaskClient, user1: User, auth_headers1: dict[str, str]
+    test_app: Flask, client: FlaskClient, user1: User, csrf_headers1: dict[str, str]
 ) -> None:
     """
     When a book is edited, the stored last_edited should be naive UTC,
@@ -34,11 +34,11 @@ def test_edit_book_normalizes_datetime_to_utc_and_serializes_z(
     resp = client.patch(
         f"/books/{book_id}",
         json={"name": "Updated"},
-        headers=auth_headers1,
+        headers=csrf_headers1,
     )
     assert resp.status_code == 200
 
-    list_resp = client.get("/books", headers=auth_headers1)
+    list_resp = client.get("/books", headers=csrf_headers1)
     assert list_resp.status_code == 200
 
     adapter = TypeAdapter(list[BookSchema])
@@ -70,7 +70,7 @@ def test_create_word_normalizes_datetime(
     test_app: Flask,
     client: FlaskClient,
     user1: User,
-    auth_headers1: dict[str, str],
+    csrf_headers1: dict[str, str],
 ) -> None:
     """
     Verify that the word creation endpoint correctly handles datetime fields,
@@ -88,7 +88,7 @@ def test_create_word_normalizes_datetime(
             "word": "word1",
             "definition": "def1",
         },
-        headers=auth_headers1,
+        headers=csrf_headers1,
     )
     assert resp.status_code == 200
 
@@ -115,7 +115,7 @@ def test_sync_book_normalizes_practice_datetimes(
     test_app: Flask,
     client: FlaskClient,
     user1: User,
-    auth_headers1: dict[str, str],
+    csrf_headers1: dict[str, str],
 ) -> None:
     """
     When syncing practices, timezone-aware datetimes sent in the request
@@ -149,7 +149,7 @@ def test_sync_book_normalizes_practice_datetimes(
                 }
             ],
         },
-        headers=auth_headers1,
+        headers=csrf_headers1,
     )
     assert resp.status_code == 200
 

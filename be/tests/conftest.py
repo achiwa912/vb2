@@ -9,7 +9,7 @@ from collections.abc import Generator
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, get_csrf_token
 from flask_sqlalchemy.session import Session
 from sqlalchemy.orm import scoped_session
 
@@ -51,6 +51,11 @@ def client(test_app: Flask, db_session: scoped_session[Session]) -> FlaskClient:
     return test_app.test_client()
 
 
+@pytest.fixture(scope="function")
+def client2(test_app: Flask, db_session: scoped_session[Session]) -> FlaskClient:
+    return test_app.test_client()
+
+
 # --- User fixtures ---
 @pytest.fixture
 def user1(test_app: Flask) -> User:
@@ -74,23 +79,27 @@ def user2(test_app: Flask) -> User:
 
 # --- Token fixtures ---
 @pytest.fixture
-def token1(user1: User) -> str:
-    return create_access_token(identity=str(user1.id))
+def token1(user1: User, client: FlaskClient) -> str:
+    token = create_access_token(identity=str(user1.id))
+    client.set_cookie("access_token_cookie", token)
+    return token
 
 
 @pytest.fixture
-def token2(user2: User) -> str:
-    return create_access_token(identity=str(user2.id))
+def token2(user2: User, client2: FlaskClient) -> str:
+    token = create_access_token(identity=str(user2.id))
+    client2.set_cookie("access_token_cookie", token)
+    return token
 
 
 @pytest.fixture
-def auth_headers1(token1: str):
-    return {"Authorization": f"Bearer {token1}"}
+def csrf_headers1(token1: str):
+    return {"X-CSRF-TOKEN": f"{get_csrf_token(token1)}"}
 
 
 @pytest.fixture
-def auth_headers2(token2: str):
-    return {"Authorization": f"Bearer {token2}"}
+def csrf_headers2(token2: str):
+    return {"X-CSRF-TOKEN": f"{get_csrf_token(token2)}"}
 
 
 # --- Utilities ---

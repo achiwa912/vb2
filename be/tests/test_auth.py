@@ -10,9 +10,9 @@ from ..models import User  # for type annotation
 
 
 class AuthResponse(BaseModel):
-    access_token: str
     user_id: int
     email: str
+    name: str
 
 
 def test_auth_ggl_new_user(client: FlaskClient, test_app: Flask) -> None:
@@ -28,8 +28,8 @@ def test_auth_ggl_new_user(client: FlaskClient, test_app: Flask) -> None:
     assert resp.status_code == 200
     data = AuthResponse.model_validate(resp.get_json())
     assert data.user_id is not None
-    assert data.access_token
     assert data.email == "new@example.com"
+    assert data.name == "New User"
 
     # Verify user was persisted
     with test_app.app_context():

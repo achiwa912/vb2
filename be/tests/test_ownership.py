@@ -12,8 +12,8 @@ def test_list_books_only_own(
     client: FlaskClient,
     user1: User,
     user2: User,
-    auth_headers1: dict[str, str],
-    auth_headers2: dict[str, str],
+    csrf_headers1: dict[str, str],
+    csrf_headers2: dict[str, str],
 ) -> None:
     """GET /books should return only the current user's books."""
     with test_app.app_context():
@@ -22,7 +22,7 @@ def test_list_books_only_own(
         db.session.add_all([b1, b2])
         db.session.commit()
 
-    resp = client.get("/books", headers=auth_headers1)
+    resp = client.get("/books", headers=csrf_headers1)
     assert resp.status_code == 200
 
     adapter = TypeAdapter(list[BookSchema])
@@ -35,7 +35,7 @@ def test_list_book_words_not_owned_returns_404(
     test_app: Flask,
     client: FlaskClient,
     user2: User,
-    auth_headers1: dict[str, str],
+    csrf_headers1: dict[str, str],
 ) -> None:
     """GET /books/<id>/words should return 404 if the book is not owned."""
     with test_app.app_context():
@@ -44,12 +44,12 @@ def test_list_book_words_not_owned_returns_404(
         db.session.commit()
         book_id = book.id
 
-    resp = client.get(f"/books/{book_id}/words", headers=auth_headers1)
+    resp = client.get(f"/books/{book_id}/words", headers=csrf_headers1)
     assert resp.status_code == 404
 
 
 def test_edit_book_not_owned_returns_404(
-    test_app: Flask, client: FlaskClient, user2: User, auth_headers1: dict[str, str]
+    test_app: Flask, client: FlaskClient, user2: User, csrf_headers1: dict[str, str]
 ) -> None:
     """PATCH on another user's book should return 404."""
     with test_app.app_context():
@@ -59,13 +59,13 @@ def test_edit_book_not_owned_returns_404(
         book_id = book.id
 
     resp = client.patch(
-        f"/books/{book_id}", json={"name": "Hacked"}, headers=auth_headers1
+        f"/books/{book_id}", json={"name": "Hacked"}, headers=csrf_headers1
     )
     assert resp.status_code == 404
 
 
 def test_delete_book_not_owned_returns_404(
-    test_app: Flask, client: FlaskClient, user2: User, auth_headers1: dict[str, str]
+    test_app: Flask, client: FlaskClient, user2: User, csrf_headers1: dict[str, str]
 ) -> None:
     """DELETE on another user's book should return 404."""
     with test_app.app_context():
@@ -74,12 +74,12 @@ def test_delete_book_not_owned_returns_404(
         db.session.commit()
         book_id = book.id
 
-    resp = client.delete(f"/books/{book_id}", headers=auth_headers1)
+    resp = client.delete(f"/books/{book_id}", headers=csrf_headers1)
     assert resp.status_code == 404
 
 
 def test_create_word_in_other_users_book_returns_404(
-    test_app: Flask, client: FlaskClient, user2: User, auth_headers1: dict[str, str]
+    test_app: Flask, client: FlaskClient, user2: User, csrf_headers1: dict[str, str]
 ) -> None:
     """POST /books/<id>/words should return 404 if the book is not owned."""
     with test_app.app_context():
@@ -91,7 +91,7 @@ def test_create_word_in_other_users_book_returns_404(
     resp = client.post(
         f"/books/{book_id}/words",
         json={"word": "test", "definition": "def", "sample": ""},
-        headers=auth_headers1,
+        headers=csrf_headers1,
     )
     assert resp.status_code == 404
 
@@ -100,7 +100,7 @@ def test_edit_word_not_owned_returns_404(
     test_app: Flask,
     client: FlaskClient,
     user2: User,
-    auth_headers1: dict[str, str],
+    csrf_headers1: dict[str, str],
 ) -> None:
     """PATCH on a word in another user's book should return 404."""
     with test_app.app_context():
@@ -116,7 +116,7 @@ def test_edit_word_not_owned_returns_404(
     resp = client.patch(
         f"/books/{book_id}/words/{word_id}",
         json={"definition": "new"},
-        headers=auth_headers1,
+        headers=csrf_headers1,
     )
     assert resp.status_code == 404
 
@@ -125,7 +125,7 @@ def test_delete_word_not_owned_returns_404(
     test_app: Flask,
     client: FlaskClient,
     user2: User,
-    auth_headers1: dict[str, str],
+    csrf_headers1: dict[str, str],
 ) -> None:
     """DELETE on a word in another user's book should return 404."""
     with test_app.app_context():
@@ -138,5 +138,5 @@ def test_delete_word_not_owned_returns_404(
         book_id = book.id
         word_id = word.id
 
-    resp = client.delete(f"/books/{book_id}/words/{word_id}", headers=auth_headers1)
+    resp = client.delete(f"/books/{book_id}/words/{word_id}", headers=csrf_headers1)
     assert resp.status_code == 404
