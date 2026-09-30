@@ -932,6 +932,7 @@ immediate question only, no unsolicited follow-ups.
 
 #+begin_src 
 uv add --dev pytest
+uv run pytest
 #+end_src
 
 **** bug
@@ -1486,7 +1487,7 @@ Preferences
 ```
 #+end_src
 
-*** move JWT from localStorage to HttpOnly cookie
+*** <DONE> move JWT from localStorage to HttpOnly cookie
 - https://flask-jwt-extended.readthedocs.io/en/stable/token_locations.html
 - Flask-JWT-Extended uses double-submit verification technique
 - Use 2 cookies
@@ -1511,3 +1512,10 @@ uv add flask-jwt-extended  # I already have
 #+end_src
 
 - fetch() for PUT, PATCH, POST, DELETE - credentials: 'same-origin'  // doesn't have to be 'include' for vb2
+
+*** About MySQL
+- My PythonAnywhere account has an access to MySQL
+- But I use only sync on PA (because async is still beta and limited)
+- PA only allows a single WSGI process for the free tier
+- So, there would be no concurrency gain by migrating from sqlite3 to MySQL
+

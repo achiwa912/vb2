@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useBooksStore } from '@/stores/books'
 import type { components } from '@/types/api'
-import { SquarePen, Download, Upload } from '@lucide/vue'
+import { SquarePen, Download, Upload, Search, Plus } from '@lucide/vue'
 import Navbar from '@/components/Navbar.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 import { useRouter } from 'vue-router'
@@ -20,6 +20,10 @@ const selectedBook = ref<BookSchema | null>(null)
 const isNew = ref<boolean>(false)
 const bookName = ref<string>('')
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const searchQuery = ref('')
+type SortKey = 'recent' | 'name' | 'edited'
+const sortKey = ref<SortKey>('recent')
 
 function wordsView(bid: number) {
   booksStore.activeBookId = bid
@@ -132,6 +136,46 @@ async function importAll(event: Event) {
   await booksStore.fetchBooks()
 }
 
+function latestPracticeTs(book: BookSchema): number {
+  const times: number[] = []
+  if (book.wd_last_practiced) times.push(new Date(book.wd_last_practiced).getTime())
+  if (book.dw_last_practiced) times.push(new Date(book.dw_last_practiced).getTime())
+  return times.length ? Math.max(...times) : 0
+}
+
+function latestPracticeLabel(book: BookSchema): string {
+  const ts = latestPracticeTs(book)
+  if (!ts) return '-'
+  return formatDate(new Date(ts).toISOString())
+}
+
+const recentBooks = computed(() => {
+  return [...booksStore.books]
+    .filter(b => latestPracticeTs(b) > 0)
+    .sort((a, b) => latestPracticeTs(b) - latestPracticeTs(a))
+    .slice(0, 4)
+})
+
+const visibleBooks = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  let list = booksStore.books
+  if (q) list = list.filter(b => b.name.toLowerCase().includes(q))
+  const sorted = [...list]
+  if (sortKey.value == 'recent') {
+    sorted.sort((a, b) => latestPracticeTs(b) - latestPracticeTs(a))
+  } else if (sortKey.value == 'name') {
+    sorted.sort((a, b) => a.name.localeCompare(b.name))
+  } else if (sortKey.value == 'edited') {
+    sorted.sort((a, b) => new Date(b.last_edited ?? 0).getTime() - new Date(a.last_edited ?? 0).getTime())
+  }
+  return sorted
+})
+
+const isSearching = computed(() => searchQuery.value.trim().length > 0)
+
+
+const isEmpty = computed(() => booksStore.books.length === 0)
+
 onMounted(async () => {
   booksStore.books = []
   booksStore.words = []
@@ -149,26 +193,152 @@ onMounted(async () => {
   </Navbar>
 
   <ToastContainer ref="toastRef" />
-  
-  <div class="p-6">
-    <div class="flex gap-2 items-end">
-      <h1 class="text-3xl font-semibold">Books</h1>
-      <button @click="openModal(null)" class="btn btn-secondary btn-outline btn-sm rounded-3xl">Add book</button>
-    </div>
-    
-    <div v-for="book in booksStore.books" :key="book.id">
-      <div @click="wordsView(book.id)" class="card card-lg card-border bg-base-100 mt-4 hover:bg-base-200 border border-base-300 rounded-3xl px-6 transition-all duration-300 hover:shadow-xl cursor-pointer flex">
-	<div class="card-body">
-	  <div class="flex items-center justify-between">
-	    <h2 class="card-title">{{ book.name }}</h2>
-	    <button @click.stop="openModal(book)" class="btn btn-primary btn-sm rounded-2xl"><SquarePen class="size-4" />Edit</button>
-	  </div>
-	  <p>Word to def: {{ formatDate(book.wd_last_practiced) || '-' }}</p>
-	  <p>Def to word: {{ formatDate(book.dw_last_practiced) || '-' }}</p>
-	  <p>Last modified: {{ formatDate(book.last_edited) || '-' }}</p>
-	</div>
+
+
+  <div class="px-4 md:px-8 py-6 max-w-6xl mx-auto">
+
+    <!-- Header -->
+    <header class="flex flex-wrap gap-3 items-center justify-between mb-6">
+      <div class="flex items-baseline gap-3">
+        <h1 class="text-3xl font-semibold">Books</h1>
+        <span v-if="!isEmpty" class="text-sm opacity-60">
+          {{ booksStore.books.length }}
+          {{ booksStore.books.length === 1 ? 'book' : 'books' }}
+        </span>
+      </div>
+      <button
+        v-if="!isEmpty"
+        @click="openModal(null)"
+        class="btn btn-secondary btn-outline btn-sm rounded-3xl"
+      >
+        <Plus class="size-4" /> Add book
+      </button>
+    </header>
+
+    <!-- Empty state -->
+    <div v-if="isEmpty" class="flex flex-col items-center text-center py-20 gap-3">
+      <div class="text-6xl opacity-30">&#x1F4DA;</div>
+      <h2 class="text-xl font-medium">No books yet</h2>
+      <p class="opacity-70 max-w-sm">
+        Create your first word book to start practicing vocabulary.
+      </p>
+      <div class="flex flex-wrap gap-2 mt-2 justify-center">
+        <button @click="openModal(null)" class="btn btn-primary btn-sm rounded-2xl">
+          <Plus class="size-4" /> Create book
+        </button>
+        <button @click="triggerImport" class="btn btn-ghost btn-sm rounded-2xl">
+          <Upload class="size-4" /> Import backup
+        </button>
       </div>
     </div>
+
+    <!-- Non-empty -->
+    <template v-else>
+
+      <!-- Continue practicing -->
+      <section v-if="recentBooks.length" class="mb-10">
+	<div class="flex items-baseline justify-between mb-4">
+	  <div>
+	    <h2 class="text-xl font-semibold">Continue practicing</h2>
+	    <p class="text-sm opacity-60 mt-0.5">Pick up where you left off</p>
+	  </div>
+	</div>
+
+	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+	  <button
+	    v-for="book in recentBooks"
+	    :key="book.id"
+	    @click="wordsView(book.id)"
+	    class="group text-left rounded-2xl p-5 bg-primary/50 border border-primary/20
+		   hover:bg-primary/15 hover:border-primary/30 hover:shadow-lg
+		   transition-all duration-200 cursor-pointer"
+	  >
+	    <div class="flex items-start gap-3">
+              <div
+		class="shrink-0 size-10 rounded-xl bg-primary/80 flex items-center justify-center
+                       text-primary"
+              >
+		<span class="text-lg">📖</span>
+              </div>
+
+              <div class="min-w-0">
+		<div class="font-semibold truncate group-hover:text-primary transition-colors">
+		  {{ book.name }}
+		</div>
+		<div class="text-xs opacity-60 mt-1">
+		  Last practiced {{ latestPracticeLabel(book) }}
+		</div>
+              </div>
+	    </div>
+
+	  </button>
+	</div>
+      </section>
+
+      <!-- Search + sort -->
+      <section class="mb-4 flex flex-wrap gap-2 items-center">
+        <label class="input input-sm input-bordered flex items-center gap-2 rounded-xl flex-1 min-w-[200px]">
+          <Search class="size-4 opacity-60" />
+          <input
+            v-model="searchQuery"
+            type="text"
+            class="grow bg-transparent outline-none"
+            placeholder="Search books..."
+          />
+        </label>
+        <select v-model="sortKey" class="select select-sm select-bordered rounded-xl">
+          <option value="recent">Last practiced</option>
+          <option value="name">Name (A&rarr;Z)</option>
+          <option value="edited">Last edited</option>
+        </select>
+      </section>
+
+      <!-- All books -->
+      <section>
+        <h2 class="text-xs uppercase tracking-wider font-medium opacity-60 mb-3">
+          {{ isSearching ? `Results (${visibleBooks.length})` : 'All books' }}
+        </h2>
+
+        <div v-if="visibleBooks.length === 0" class="text-center py-10 opacity-60 text-sm">
+          No books match \u201c{{ searchQuery }}\u201d.
+          <button @click="searchQuery = ''" class="link link-primary ml-1">Clear search</button>
+        </div>
+
+        <div
+          v-else
+          class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+        >
+          <div
+            v-for="book in visibleBooks"
+            :key="book.id"
+            @click="wordsView(book.id)"
+            class="group card bg-base-100 border border-base-300 hover:border-base-content/20 hover:shadow-md transition-all rounded-2xl p-4 cursor-pointer flex flex-col"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <h3 class="font-medium leading-tight line-clamp-2 pr-1">
+                {{ book.name }}
+              </h3>
+              <button
+                @click.stop="openModal(book)"
+                class="btn btn-ghost btn-xs btn-circle opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0"
+                aria-label="Edit book"
+              >
+                <SquarePen class="size-3.5" />
+              </button>
+            </div>
+
+            <div class="mt-3 text-xs space-y-0.5 opacity-70">
+              <div>W&rarr;D: {{ formatDate(book.wd_last_practiced) || '-' }}</div>
+              <div>D&rarr;W: {{ formatDate(book.dw_last_practiced) || '-' }}</div>
+            </div>
+
+            <div class="mt-auto pt-3 text-[10px] uppercase tracking-wider opacity-40">
+              edited {{ formatDate(book.last_edited) || '-' }}
+            </div>
+          </div>
+        </div>
+      </section>
+    </template>
   </div>
 
   <!-- add/edit book modal -->
