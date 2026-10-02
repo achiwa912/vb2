@@ -25,16 +25,17 @@ const editSample = ref<string>('')
 const booksStore = useBooksStore()
 const route = useRoute()
 const router = useRouter()
-const bix = booksStore.id2ixBook(booksStore.activeBookId)
 const importResults = ref<ImportCsvResp | null>(null)
 
+const bix = computed(() => booksStore.id2ixBook(booksStore.activeBookId))
+
 const currentBook = computed(() => {
-  if (bix == null) return null
-  return booksStore.books[bix]
+  if (bix.value === null) return null
+  return booksStore.books[bix.value]
 })
 
 const numMasteredWd = computed(() => {
-  if (!bix) return null
+  if (bix.value === null) return 0
   let cnt = 0
   for (const prac of booksStore.pracs) {
     if (prac.direction == 'wd' && prac.status == 'review' && prac.due_dates && prac.due_dates >= 10) {
@@ -45,7 +46,7 @@ const numMasteredWd = computed(() => {
 })
 
 const numMasteredDw = computed(() => {
-  if (!bix) return 0
+  if (bix.value === null) return 0
   let cnt = 0
   for (const prac of booksStore.pracs) {
     if (prac.direction == 'dw' && prac.status == 'review' && prac.due_dates && prac.due_dates >= 10) {
@@ -56,7 +57,7 @@ const numMasteredDw = computed(() => {
 })
 
 const numReviewWd = computed(() => {
-  if (!bix) return 0
+  if (bix.value === null) return 0
   let cnt = 0
   for (const prac of booksStore.pracs) {
     if (prac.direction == 'wd' && prac.status == 'review') {
@@ -67,7 +68,7 @@ const numReviewWd = computed(() => {
 })
 
 const numReviewDw = computed(() => {
-  if (!bix) return 0
+  if (bix.value === null) return 0
   let cnt = 0
   for (const prac of booksStore.pracs) {
     if (prac.direction == 'dw' && prac.status == 'review') {
@@ -79,7 +80,7 @@ const numReviewDw = computed(() => {
 
 
 const numLearningWd = computed(() => {
-  if (!bix) return 0
+  if (bix.value === null) return 0
   let cnt = 0
   for (const prac of booksStore.pracs) {
     if (prac.direction == 'wd' && (prac.status == 'learning' || prac.status == 'waiting')) {
@@ -90,7 +91,7 @@ const numLearningWd = computed(() => {
 })
 
 const numLearningDw = computed(() => {
-  if (!bix) return 0
+  if (bix.value === null) return 0
   let cnt = 0
   for (const prac of booksStore.pracs) {
     if (prac.direction == 'dw' && (prac.status == 'learning' || prac.status == 'waiting')) {
@@ -163,7 +164,9 @@ function practice(dir: PracDir | null) {
 }
 
 onMounted(async () => {
-  if (route.path.startsWith('/demo')) return
+  if (route.path.startsWith('/demo')) {
+    return
+  }
   booksStore.words = []
   booksStore.pracs = []
   // await booksStore.fetchWords()
