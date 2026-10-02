@@ -87,7 +87,11 @@ onMounted(async () => {
           </svg>
         </div>
         <h1 class="text-3xl font-bold tracking-tight">vocaBull</h1>
-        <p class="text-base-content/60 mt-1">Build your vocabulary, one word at a time</p>
+	<div class="flex justify-center text-base-content/60 mt-2 items-center">
+	  <div>New visitor?  How about interactive</div>
+	  <div @click="router.push('/demo')" class="btn btn-primary mx-1 rounded-xl">Demo</div>
+	  <div>?</div>
+	</div>
       </div>
 
       <!-- Login Card -->
@@ -118,7 +122,7 @@ onMounted(async () => {
 
       <!-- Footer -->
       <p class="text-center text-sm text-base-content/50 mt-6">
-        New here? Just sign in — an account is created automatically.
+        Want to join? Just sign in — an account is created automatically.
       </p>
     </div>
   </div>

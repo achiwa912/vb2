@@ -230,6 +230,11 @@ onMounted(async () => {
           <Upload class="size-4" /> Import backup
         </button>
       </div>
+      <div class="flex justify-center text-base-content/60 mt-2 items-center">
+	<div>New member?  How about interactive</div>
+	<div @click="router.push('/demo')" class="btn btn-primary mx-1 rounded-xl">Demo</div>
+	  <div>?</div>
+      </div>
     </div>
 
     <!-- Non-empty -->

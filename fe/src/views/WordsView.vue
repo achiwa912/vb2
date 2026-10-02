@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { SquarePen, SquareArrowRight, SquareArrowLeft, Upload } from '@lucide/vue'
 import { useBooksStore } from '@/stores/books'
 import type { components } from '@/types/api'
@@ -23,6 +23,7 @@ const editWord = ref<string>('')
 const editDef = ref<string>('')
 const editSample = ref<string>('')
 const booksStore = useBooksStore()
+const route = useRoute()
 const router = useRouter()
 const bix = booksStore.id2ixBook(booksStore.activeBookId)
 const importResults = ref<ImportCsvResp | null>(null)
@@ -152,12 +153,17 @@ const deleteWord = async () => {
 }
 
 function practice(dir: PracDir | null) {
-  if (!dir) return
   booksStore.pracDir = dir
-  router.push('/prac')
+  if (!dir) return
+  if (route.path == '/demo') {
+    router.push('/demo/prac')
+  } else {
+    router.push('/prac')
+  }
 }
 
 onMounted(async () => {
+  if (route.path.startsWith('/demo')) return
   booksStore.words = []
   booksStore.pracs = []
   // await booksStore.fetchWords()
@@ -209,9 +215,11 @@ const closeImportModal = () => {
 
 <template>
   <Navbar>
-    <input ref="fileInputRef" type="file" accept=".csv,application/csv" class="hidden-input" @change="importCsv" />
-    <li><div @click="triggerImport"><Upload />Import CSV</div></li>
-    <div class="divider my-1"></div>
+    <div v-if="!route.path.startsWith('/demo')">
+      <input ref="fileInputRef" type="file" accept=".csv,application/csv" class="hidden-input" @change="importCsv" />
+      <li><div @click="triggerImport"><Upload />Import CSV</div></li>
+      <div class="divider my-1"></div>
+    </div>
   </Navbar>
 
   <ToastContainer ref="toastRef" />
@@ -219,7 +227,7 @@ const closeImportModal = () => {
   <div class="p-6">
     <div class="flex items-center">
       <h1 class="text-3xl font-semibold">{{ currentBook?.name }}</h1>
-      <button @click="openModal(null)" class="btn btn-secondary btn-outline btn-sm rounded-3xl ml-4">Add word</button>
+      <button v-if="!route.path.startsWith('/demo')" @click="openModal(null)" class="btn btn-secondary btn-outline btn-sm rounded-3xl ml-4">Add word</button>
     </div>
 
      <!-- info stats -->
@@ -293,7 +301,7 @@ const closeImportModal = () => {
 	      <h2 class="card-title text-xl m-0">{{ word.word }}</h2>
 
 	      <!-- Edit Button -->
-	      <button @click="openModal(word)" class="btn btn-primary btn-sm rounded-2xl">
+	      <button v-if="!route.path.startsWith('/demo')" @click="openModal(word)" class="btn btn-primary btn-sm rounded-2xl">
 		<SquarePen class="size-4" />Edit
 	      </button>
 	    </div>

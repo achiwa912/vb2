@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, reactive, watch, nextTick } from 'vue'
-import { onBeforeRouteLeave, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRouter, useRoute } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { PracEngine } from '@/lib/pracengine'
 import { ThumbsUp, ThumbsDown, SkipForward, Music, Music3, RefreshCw, Check, X, SquarePen, Undo2 } from '@lucide/vue'
@@ -8,6 +8,7 @@ import Navbar from '@/components/Navbar.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 
 const router = useRouter()
+const route = useRoute()
 const booksStore = useBooksStore()
 const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
 const modalRef = ref<HTMLDialogElement | null>(null)
@@ -393,7 +394,13 @@ const handlers: Partial<Record<Action, () => void>> = {
   'toggleAutoplay': () => {
     isAutoplay.value = !isAutoplay.value
   },
-  'escape': () => router.push('/words'),
+  'escape': () => {
+    if (route.path == '/demo/prac') {
+      router.push('/demo')
+    } else {
+      router.push('/words')
+    }
+  },
   'undo': () => engine.undo(),
   'help': () => showHelp(),  
 }
@@ -476,8 +483,10 @@ onUnmounted(() => {
 
 <template>
   <Navbar>
-    <li><div @click="manualSync"><RefreshCw />Sync</div></li>
-    <div class="divider my-1"></div>
+    <div v-if="!route.path.startsWith('/demo')">
+      <li><div @click="manualSync"><RefreshCw />Sync</div></li>
+      <div class="divider my-1"></div>
+    </div>
   </Navbar>
   
   <div>
@@ -548,7 +557,7 @@ onUnmounted(() => {
 	      <button @click.stop="speakFront" class="btn btn-sm btn-success text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null"><Music3 />Front</button>
 	      <button @click.stop="speakRest" class="btn btn-sm btn-info text-sm" :disabled="engine.pracIdx === null || booksStore.pracDir === null || !engine.isFlipped"><Music />Rest</button>
 	    </div>
-	    <div class="flex justify-center gap-3 absolute left-0">
+	    <div v-if="!route.path.startsWith('/demo')" class="flex justify-center gap-3 absolute left-0">
 	      <button @click.stop="openModal" class="btn btn-primary btn-sm rounded-2xl">
 		<SquarePen class="size-4" />
 	      </button>

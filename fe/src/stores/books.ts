@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import type { components } from '@/types/api'
 import { client } from '@/api/client'
 import { useUserStore } from '@/stores/user'
+import { useRoute } from 'vue-router'
 
 type BookSchema = components['schemas']['BookSchema']
 type WordSchema = components['schemas']['WordSchema']
@@ -10,18 +11,41 @@ type PracticeSchema = components['schemas']['PracticeSchema']
 //type ListBooksResp = components['schemas']['ListBooksResp']
 type PracDir = components['schemas']['PracDir']
 
-
 export const useBooksStore = defineStore('books', () => {
   const books = ref<BookSchema[]>([])
   const words = ref<WordSchema[]>([])
   const pracs = ref<PracticeSchema[]>([])
-  const activeBookId = ref<number | null>(1)  // ++++ to (null)
-  const pracDir = ref<PracDir | null>("dw")  // ++++ to (null)
+  const activeBookId = ref<number | null>(null)  // was (1)
+  const pracDir = ref<PracDir | null>(null)  // was ("dw")
   const wordsNoPrac = ref<number[]>([])
   const lastSyncTime = ref<Date | null>(null)
 
+  const route = useRoute()
+
   const userStore = useUserStore()
   const userId = computed(() => userStore.user_id ?? null)
+
+  function reset() {
+    books.value = []
+    words.value = []
+    pracs.value = []
+    activeBookId.value = null
+    pracDir.value = null
+    wordsNoPrac.value = []
+    lastSyncTime.value = null
+  }
+
+  function prepDemo() {
+    reset()
+    books.value.push({id: 1, name: "demo1", user_id: -1, last_edited: null, dw_last_practiced: null, wd_last_practiced: null})
+    words.value.push({id: 1, book_id: 1, word: "electoral", definition: "relating to an election", sample: "the electoral system", last_edited: "dummy"})
+    words.value.push({id: 2, book_id: 1, word: "hefty", definition: "quite heavy", sample: "He gave the door a hefty kick.", last_edited: "dummy"})
+    words.value.push({id: 3, book_id: 1, word: "holistic", definition: "dealing with or treating the whole of something or someone and not just a part", sample: "holistic approaches", last_edited: "dummy"})
+    words.value.push({id: 4, book_id: 1, word: "potent", definition: "powerful", sample: "potent medicine", last_edited: "dummy"})
+    words.value.push({id: 5, book_id: 1, word: "impersonal", definition: "not influenced by, showing, or involving personal feelings", sample: "She has a very cold and impersonal manner.", last_edited: "dummy"})
+    activeBookId.value = 1
+    createWordsNoPrac()
+  }
   
   async function fetchBooks() {
     const { data, error } = await client.GET('/books')
@@ -45,6 +69,7 @@ export const useBooksStore = defineStore('books', () => {
   }
 
   async function syncBook() {
+    if (route.path.startsWith('/demo')) return
     if (activeBookId.value === null) return
     const { data, error } = await client.POST('/sync/{id}', {
       params: { path: { id: activeBookId.value } },
@@ -202,6 +227,7 @@ export const useBooksStore = defineStore('books', () => {
   }
 
   async function syncServer() {
+    if (route.path.startsWith('/demo')) return
     await syncBook()
 
     createWordsNoPrac()
@@ -228,5 +254,5 @@ export const useBooksStore = defineStore('books', () => {
     }
   }
   
-  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer, userId }
+  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer, userId, reset, prepDemo }
 })

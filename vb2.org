@@ -1519,3 +1519,64 @@ uv add flask-jwt-extended  # I already have
 - PA only allows a single WSGI process for the free tier
 - So, there would be no concurrency gain by migrating from sqlite3 to MySQL
 
+*** Demo mode (10/2)
+Looks like no one is interested in vb2 looking at my post in r/Vocabulary (53 views after 5 days) because people have looked at so many similar apps.  As vibe-coded apps look rather good, people can't distinguish decent ones from bad ones.  Dev in me feels "why bother?", but PO in me thinks vb2 needs a demo mode to appeal people.  I'd like to find first 10 users because I think vb2 is useful.
+
+- no login needed
+- prepare a book with 5 words
+- people can practice dw and wd
+- links on login page and possibly BooksView
+  - both w/o login and w/ login
+- direct link that I can place in a blog, SNS post, etc.; /demo - WordsView
+- no accesses (sync/load) to backend; no database involved
+- check demo mode in beforeEach
+  - from: other than /demo or /demo/prac, to: /demo
+    - clear booksStore.books
+    - set 1 book, 5 words (no prac), currentbook, dir
+  - from: /demo/prac, to: /demo
+    - do nothing
+  - from: other than /demo or /demo/prac, to: /demo/prac
+    - navigate to /demo (can skip prep; redundant)
+  - from: /demo or /demo/prac, to: other than /demo or /demo/prac
+    - clear booksStore.books
+- use route.path (vue router) because it's reactive
+
+- Claude summary after discussing how I implement.
+#+begin_src 
+Goal and shape
+- A no-login demo for early users: one handwritten book with 5 words and no pracs, living entirely in booksStore.
+- Routes are /demo (WordsView) and /demo/prac (PracView), both client-side and exempt from the login check.
+- Entry links go on LoginView and BooksView.
+
+Server
+- No backend changes are needed. Flask's catch-all already serves index.html for /demo paths, and Vite does the same in dev.
+- The /words and /prac reload "Not Found" is a separate problem, and it's in the backlog.
+
+Router guard (beforeEach)
+- Entering /demo from a non-demo route resets the store, then loads the sample book and words and sets the current book and direction.
+- /demo/prac to /demo does nothing, so pracs persist and visitors can try both directions.
+- Entering /demo/prac from a non-demo route (for example after a reload) just redirects to /demo. The guard's second run does the load.
+- Leaving the demo for any non-demo route resets the store.
+- "Clear" always means one reset function covering books, words, pracs, activeBookId, pracDir, wordsNoPrac and lastSyncTime. You'll change the activeBookId and pracDir defaults to null.
+
+Server contact in demo
+- syncServer (which wraps syncBook) is skipped entirely.
+- Edit and delete word, and the "sync server" and "logout" navbar items, are disabled.
+- The disabled condition is route.path.startsWith('/demo') from useRoute(), which is reactive.
+- Demo progress is deliberately discarded. The sample book never reaches a real account.
+
+Logged-in users
+- Real sync finishes before they leave PracView (it's awaited), and BooksView refetches on every mount, so their real data returns intact after a demo visit.
+
+Build approach
+- Write and test one piece at a time rather than all at once.
+#+end_src
+
+#+begin_src 
+uv run pytest # in venv
+uv run ruff check .
+pnpm test
+pnpm run lint
+pnpm build
+rr_vb2
+#+end_src

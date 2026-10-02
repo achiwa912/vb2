@@ -59,11 +59,16 @@ You can import many words defined in a CSV file.  Can choose =,= (comma), =;= (s
 | Deployment | [[https://www.pythonanywhere.com][PythonAnywhere]] (manual WSGI configuration)                       |
 
 * Live Demo & Usage
+** PythonAnywhere deployment
 - Prerequisite: a gmail account
 - *App:* https://achiwa912.pythonanywhere.com
   - Note: running in alpha
 - Usage: [[https://blog.achiwa.co.uk/posts/vb2intro/][vocaBull 2 - introduction]]
 
+** Demo
+- Can try vocaBull without creating an account
+- No sign-up needed, and with sample words registered
+- *Demo:* https://achiwa912.pythonanywhere.com/demo
 
 * Getting Started
 ** Prerequisites

@@ -16,6 +16,12 @@ const activeBook = computed(() => {
   return ix === null ? undefined : booksStore.books[ix]
 })
 
+
+function quitDemo() {
+  //booksStore.reset()
+  router.push('/')
+}
+
 async function logout() {
   await client.POST('/logout')
   userStore.unsetUser()
@@ -24,15 +30,23 @@ async function logout() {
 
 async function goHome() {
   console.log(route.path)
+  if (route.path.startsWith('/demo')) {
+    router.push('/demo')
+    return
+  }
   if (route.path == '/prac') {
-    await booksStore.syncServer()
+      await booksStore.syncServer()
   }
   booksStore.activeBookId = null
   router.push('/')
 }
 
 function goWords() {
-  router.push('/words')
+  if (route.path.startsWith('/demo')) {
+    router.push('/demo')
+  } else {
+    router.push('/words')
+  }
 }
 
 </script>
@@ -46,9 +60,17 @@ function goWords() {
         <div class="flex items-center gap-3 group">
 
           <!-- Logo -->
-	  <div @click="goHome" class="w-12 h-8 bg-primary rounded-2xl hidden sm:flex items-center justify-center transition-all group-hover:rotate-12 cursor-pointer">
-	    <span class="text-white font-bold text-xl">vB</span>
+	  <div class="relative w-12 h-8">
+	    <div @click="goHome"
+       class="w-12 h-8 bg-primary rounded-2xl hidden sm:flex items-center justify-center transition-all group-hover:rotate-12 cursor-pointer">
+	      <span class="text-white font-bold text-xl">vB</span>
+	    </div>
+
+	    <span v-if="route.path.startsWith('/demo')" class="absolute -top-3 -right-14 text-[18px] font-bold text-error bg-error/5 border border-error/60 px-1.5 py-0.5 rounded-full whitespace-nowrap italic">
+		  Demo mode
+	    </span>
 	  </div>
+
 	  <span @click="goHome" class="text-2xl font-semibold tracking-tight cursor-pointer">vocaBull</span>
 	  
 	  <!-- Breadcrumbs -->
@@ -92,13 +114,22 @@ function goWords() {
             
             <li>
               <button 
-                @click="logout"
+                v-if="!route.path.startsWith('/demo')" @click="logout"
                 class="rounded-2xl py-3 text-error hover:bg-error/10 flex items-center gap-3"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4V7" />
                 </svg>
                 Logout
+              </button>
+              <button 
+                v-else @click="quitDemo"
+                class="rounded-2xl py-3 text-error hover:bg-error/10 flex items-center gap-3"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4V7" />
+                </svg>
+                Quit Demo
               </button>
             </li>
           </ul>
