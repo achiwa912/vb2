@@ -204,6 +204,7 @@ export class PracEngine {
   }
 
   async onceMore() {
+    if (this.lw.length == 0) return
     this.saveUndo()
     this.infoTried++
     this.isFlipped = false
@@ -218,6 +219,7 @@ export class PracEngine {
   }
 
   async memorized() {
+    if (this.lw.length == 0) return
     this.saveUndo()
     this.infoTried++
     this.infoMem++
@@ -241,6 +243,7 @@ export class PracEngine {
   }
 
   async okay() {
+    if (this.lw.length == 0) return
     this.saveUndo()
     this.infoTried++
     this.infoMem++

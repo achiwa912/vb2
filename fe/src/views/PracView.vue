@@ -629,7 +629,7 @@ onUnmounted(() => {
 	  Way to go!
 	</p>
 	<button @click="engine.undo" class="btn btn-primary btn-sm rounded-3xl" :disabled="!engine.undoArray.length">
-	  <RefreshCw class="size-4" />
+	  <Undo2 class="size-4" />
 	</button>
       </div>
 
