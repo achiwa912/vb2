@@ -328,7 +328,11 @@ watch(isAutoplay, (on) => {
 
 onBeforeRouteLeave(async () => {
   engine.isFlipped = false
-  await booksStore.syncServer()
+  const success = await booksStore.syncServer()
+  if (!success) {
+    toastRef.value?.showAlert("Failed to sync with server.  Don't leave practice view until network is available.  Don't close the tab or reload.", 'error')
+    return false
+  }
 })
 
 //====== keyboard shortcuts ================================
@@ -488,6 +492,8 @@ onUnmounted(() => {
       <div class="divider my-1"></div>
     </div>
   </Navbar>
+
+  <ToastContainer ref="toastRef" />
   
   <div>
     <!-- Title -->

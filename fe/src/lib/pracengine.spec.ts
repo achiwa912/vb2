@@ -28,7 +28,7 @@ function makeStore(overrides: Partial<PracStoreLike> = {}): PracStoreLike {
     lastSyncTime: null,
     userId: 1,
     createWordsNoPrac: vi.fn(),
-    syncServer: vi.fn(async () => {}),
+    syncServer: vi.fn(async () => true),
     isNextDayOrLater: vi.fn(() => false),
     ...overrides,
   }

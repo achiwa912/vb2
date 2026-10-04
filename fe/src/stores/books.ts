@@ -66,22 +66,37 @@ export const useBooksStore = defineStore('books', () => {
       return
     }
     words.value = data.words
+    return
   }
 
   async function syncBook() {
-    if (route.path.startsWith('/demo')) return
-    if (activeBookId.value === null) return
-    const { data, error } = await client.POST('/sync/{id}', {
-      params: { path: { id: activeBookId.value } },
-      body: { practices: pracs.value },
-    })
+    if (route.path.startsWith('/demo')) return true
+    if (activeBookId.value === null) return true
+    let data, error
+    try {
+      const res = await client.POST('/sync/{id}', {
+	params: { path: { id: activeBookId.value } },
+	body: { practices: pracs.value },
+      })
+      data = res.data
+      error = res.error
+    } catch (err) {
+      console.log('syncBook - exception while sync with server', err)
+      return false
+    }
     if (error) {
-      return
+      console.log('syncBook - error sync with server', error)
+      return false
     }
     const idx = books.value.findIndex((b) => b.id === activeBookId.value)
-    books.value[idx] = data.book
-    words.value = data.words
-    pracs.value = data.practices
+    if (idx !== -1 && data) {
+      books.value[idx] = data.book
+      words.value = data.words
+      pracs.value = data.practices
+      return true
+    }
+    console.log('syncBook - book dx, words and/or pracs corrupt', idx)
+    return false
   }
   
   async function addBook(bookName: string | null): Promise<{ status: number, message: string }> {
@@ -227,21 +242,24 @@ export const useBooksStore = defineStore('books', () => {
   }
 
   async function syncServer() {
-    if (route.path.startsWith('/demo')) return
-    await syncBook()
+    if (route.path.startsWith('/demo')) return true
+    if (!(await syncBook())) return false
 
     createWordsNoPrac()
     lastSyncTime.value = new Date() // now
 
     // decrement due_counters
     const bookIndex = id2ixBook(activeBookId.value)
-    if (bookIndex === null) return
+    if (bookIndex === null) {
+      console.log('syncServer - no activeBookId', activeBookId.value)
+      return true  // no need for decrementing (or a bug)
+    }
     if (pracDir.value == 'wd') {
       const lastp = books.value[bookIndex]?.wd_last_practiced
-      if (!isNextDayOrLater(lastp ? new Date(lastp) : null)) return
+      if (!isNextDayOrLater(lastp ? new Date(lastp) : null)) return true
     } else {
       const lastp = books.value[bookIndex]?.dw_last_practiced
-      if (!isNextDayOrLater(lastp ? new Date(lastp) : null)) return
+      if (!isNextDayOrLater(lastp ? new Date(lastp) : null)) return true
     }
     for (const prac of pracs.value) {
       if (pracDir.value == prac.direction && prac.status == 'review') {
@@ -252,6 +270,7 @@ export const useBooksStore = defineStore('books', () => {
 	}
       }
     }
+    return true
   }
   
   return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer, userId, reset, prepDemo }

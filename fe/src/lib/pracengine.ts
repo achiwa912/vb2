@@ -12,7 +12,7 @@ export interface PracStoreLike {
   lastSyncTime: Date | null
   userId: number | null
   createWordsNoPrac(): void
-  syncServer(): Promise<void>
+  syncServer(): Promise<boolean>
   isNextDayOrLater(date: Date | null, now?: Date): boolean
 }
 

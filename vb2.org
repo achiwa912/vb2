@@ -1580,3 +1580,46 @@ pnpm run lint
 pnpm build
 rr_vb2
 #+end_src
+
+*** bug - sync with server silently fails
+- syncBook, syncServer shouldn't fail silently
+- where these are used:
+#+begin_src 
+~/py/vb2/fe % grep -r syncBook src  
+src/stores/books.ts:  async function syncBook() {
+src/stores/books.ts:      console.log('syncBook - error sync with server')
+src/stores/books.ts:    await syncBook()
+src/stores/books.ts:  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer, userId, reset, prepDemo }
+src/views/PracView.vue:  await booksStore.syncBook()
+src/views/PracView.vue:  await booksStore.syncBook()
+src/views/WordsView.vue:  await booksStore.syncBook()
+
+~/py/vb2/fe % grep -r syncServer src
+src/stores/books.ts:  async function syncServer() {
+src/stores/books.ts:  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer, userId, reset, prepDemo }
+src/components/Navbar.vue:      await booksStore.syncServer()
+src/lib/pracengine.spec.ts:    syncServer: vi.fn(async () => {}),
+src/lib/pracengine.ts:  syncServer(): Promise<void>
+src/lib/pracengine.ts:      await this.store.syncServer()
+src/views/PracView.vue:  await booksStore.syncServer()
+src/views/PracView.vue:  await booksStore.syncServer()
+src/views/PracView.vue:  await booksStore.syncServer()
+#+end_src
+**** books.ts (book, server)
+- <done> define syncBook -> should return true/false
+- <done> book; in syncServer -> should return if syncBook fails
+**** PracView.vue (book, server)
+- (1) book; updateWord() -> ???updated word might not load???
+- (2) book; deleteWord() -> ???deleted word might not disappear???
+- server; manualSync() -> should show error alert
+**** WordsView.vue (book)
+- (3) book; onMounted -> ??? should navigate back??
+**** Navbar.vue (server)
+- <done> (4) server; goHome() from /prac -> -> warn and block exiting pracview.
+**** pracengine.ts (server)
+- (5) server; doPrac() if next day -> ??? does it matter?
+
+#1, 2 -> no big deal (could be inconvenient)
+#3 -> word list empty.  user will notice.  can go back to booksview.  no big deal
+#4 -> This is a big deal.  User will lose progress data.  -> warn and block exiting pracview.
+#5 -> no big deal now; stale data
