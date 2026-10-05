@@ -176,6 +176,8 @@ def create_word(path: BookPath, body: CreateWordReq) -> tuple[dict[str, str], in
     )
     db.session.add(w)
     db.session.commit()
+    w.book.last_edited = w.last_edited
+    db.session.commit()
     return WordResp.model_validate({"word": w}).model_dump(mode="json"), 200
 
 
@@ -199,6 +201,7 @@ def edit_word(path: WordPath, body: PatchWordReq) -> tuple[dict[str, str], int]:
     if body.sample is not None:
         w.sample = body.sample
     w.last_edited = datetime.now(UTC)
+    w.book.last_edited = w.last_edited
     db.session.commit()
     return WordResp.model_validate({"word": w}).model_dump(mode="json"), 200
 
@@ -216,6 +219,7 @@ def delete_word(path: WordPath) -> tuple[dict[str, str], int]:
     if not w:
         return {"message": "Word not found"}, 404
     db.session.delete(w)
+    w.book.last_edited = datetime.now(UTC)
     db.session.commit()
     return {"message": f"Deleted word id={path.wid} and associated practices"}, 200
 
