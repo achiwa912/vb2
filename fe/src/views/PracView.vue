@@ -277,15 +277,17 @@ const speakTts = (txt: string) => {
   speakTimer = window.setTimeout(() => {
     speakTimer = null
     const utterance = new SpeechSynthesisUtterance(txt)
-    utterance.lang = 'en-US'
+    //utterance.lang = 'en-US'
     utterance.rate = 1.1
 
     const preferredFemaleVoices = [
+      'Microsoft EmmaMultilingual Online (Natural) - English (United States)',
+      'Google US English', // Chrome Desktop
+      'Ava', 'Zoe', // Apple
       'Karen', 'Samantha', 'Tessa',
       'Microsoft Zira',
       'Microsoft Jenny Online (Natural) - English (United States)',
       'Microsoft Aria Online (Natural) - English (United States)',
-      'Google US English',
     ]
 
     const availableVoices = voices.value.length > 0
@@ -296,11 +298,17 @@ const speakTts = (txt: string) => {
       availableVoices.find(v => preferredFemaleVoices.includes(v.name)) ||
       availableVoices.find(v => preferredFemaleVoices.some(p => v.name.includes(p)))
 
-    if (bestVoice) utterance.voice = bestVoice
-    else console.warn('[speakTts] no preferred voice matched, voices=', availableVoices.map(v => v.name))
+    if (bestVoice) {
+      utterance.voice = bestVoice
+      utterance.voice = bestVoice
+      utterance.lang = bestVoice.lang
+    } else {
+      console.warn('[speakTts] no preferred voice matched, voices=', availableVoices.map(v => v.name))
+    }
 
+    console.log('voice', utterance.voice)
     window.speechSynthesis.speak(utterance)
-  }, 80)
+  }, 150)  // was 80
 }
 
 // 1. When a new card is loaded, reset flip and speak the front (if autoplay on)
@@ -389,24 +397,24 @@ function resolveAction(event: KeyboardEvent): Action | null {
 }
 
 const handlers: Partial<Record<Action, () => void>> = {
-  'onceMore': () => engine.onceMore(),
-  'memorized': () => engine.memorized(),
-  'flip': () => flipCard(),
-  'okay': () => engine.okay(),
-  'playFront': () => speakFront(),
-  'playRest': () => { if (engine.isFlipped ) speakRest() },
-  'toggleAutoplay': () => {
+      'onceMore': () => engine.onceMore(),
+      'memorized': () => engine.memorized(),
+      'flip': () => flipCard(),
+      'okay': () => engine.okay(),
+      'playFront': () => speakFront(),
+      'playRest': () => { if (engine.isFlipped ) speakRest() },
+      'toggleAutoplay': () => {
     isAutoplay.value = !isAutoplay.value
   },
-  'escape': () => {
+      'escape': () => {
     if (route.path == '/demo/prac') {
       router.push('/demo')
     } else {
       router.push('/words')
     }
   },
-  'undo': () => engine.undo(),
-  'help': () => showHelp(),  
+      'undo': () => engine.undo(),
+      'help': () => showHelp(),  
 }
 
 const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT'])

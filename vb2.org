@@ -1623,3 +1623,17 @@ src/views/PracView.vue:  await booksStore.syncServer()
 #3 -> word list empty.  user will notice.  can go back to booksview.  no big deal
 #4 -> This is a big deal.  User will lose progress data.  -> warn and block exiting pracview.
 #5 -> no big deal now; stale data
+
+*** tts voices
+- https://github.com/HadrienGardeur/web-speech-recommended-voices
+
+**** Very high
+- Edge - Microsoft EmmaMultilingual Online (Natural) - English (United States)
+- Edge - Microsoft AvaMultilingual Online (Natural) - English (United States)
+
+**** High
+- Chrome Desktop - Google US English
+
+**** Mixed
+- macOS, iOS - Ava
+- macOS, iOS - Zoe

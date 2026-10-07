@@ -228,12 +228,12 @@ export class PracEngine {
     if (idx === null) return
 
     if (this.store.pracs[idx]!.status === 'review') {
-      this.store.pracs[idx]!.due_dates = (this.store.pracs[idx]!.due_dates ?? 1) * 2
+      this.store.pracs[idx]!.due_dates = (this.store.pracs[idx]!.due_dates ?? 2) * 3
       this.store.pracs[idx]!.due_counter = this.store.pracs[idx]!.due_dates
     } else {
       this.store.pracs[idx]!.status = 'review'
-      this.store.pracs[idx]!.due_dates = 1
-      this.store.pracs[idx]!.due_counter = 1
+      this.store.pracs[idx]!.due_dates = 2
+      this.store.pracs[idx]!.due_counter = 2
     }
 
     this.lw.shift()
