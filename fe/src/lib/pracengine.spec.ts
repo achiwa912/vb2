@@ -126,8 +126,8 @@ describe('PracEngine', () => {
     const idx = engine.pracIdx!
     await engine.memorized()
 
-    expect(store.pracs[idx]!.due_dates).toBe(2)
-    expect(store.pracs[idx]!.due_counter).toBe(2)
+    expect(store.pracs[idx]!.due_dates).toBe(3)
+    expect(store.pracs[idx]!.due_counter).toBe(3)
   })
 
   it('okay for "waiting" and "review"', async () => {

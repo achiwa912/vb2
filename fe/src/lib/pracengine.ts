@@ -228,7 +228,7 @@ export class PracEngine {
     if (idx === null) return
 
     if (this.store.pracs[idx]!.status === 'review') {
-      this.store.pracs[idx]!.due_dates = (this.store.pracs[idx]!.due_dates ?? 2) * 3
+      this.store.pracs[idx]!.due_dates = Math.min((this.store.pracs[idx]!.due_dates ?? 2) * 3, 256)
       this.store.pracs[idx]!.due_counter = this.store.pracs[idx]!.due_dates
     } else {
       this.store.pracs[idx]!.status = 'review'
@@ -253,7 +253,7 @@ export class PracEngine {
 
     const prac = this.store.pracs[idx]!
     if (prac.status === 'review') {
-      prac.due_dates = (prac.due_dates ?? 1) * 2
+      prac.due_dates = Math.min((prac.due_dates ?? 1) * 2, 256)
       prac.due_counter = prac.due_dates
       this.lw.shift()
     } else if (prac.status === 'waiting') {
