@@ -107,7 +107,7 @@ describe('PracEngine', () => {
     expect(engine.ww).toHaveLength(1)
   })
 
-  it('doubles due counter on memorized for review cards', async () => {
+  it('triples due counter on memorized for review cards', async () => {
     const store = makeStore({
       pracs: [
 	makePractice({ status: 'review', due_counter: 0, due_dates: 1 }),
@@ -133,9 +133,9 @@ describe('PracEngine', () => {
   it('okay for "waiting" and "review"', async () => {
     const store = makeStore({
       pracs: [
-	makePractice({ status: 'review', due_counter: 0, due_dates: 2 }), // 1st
-	makePractice({ status: 'learning' }),  // 2nd
-	makePractice({ status: 'waiting' }),  // 3rd
+	makePractice({ status: 'review', due_counter: 0, due_dates: 2 }), // 3rd
+	makePractice({ status: 'learning' }),  // 1st
+	makePractice({ status: 'waiting' }),  // 2nd
       ],
       wordsNoPrac: [],
     })
@@ -150,19 +150,20 @@ describe('PracEngine', () => {
     
     const idx0 = engine.pracIdx!
     await engine.okay()
-    expect(store.pracs[idx0]!.status).toBe('review')
-    expect(store.pracs[idx0]!.due_dates).toBe(4)
-    
+    expect(store.pracs[idx0]!.status).toBe('waiting')
+
     const idx1 = engine.pracIdx!
     await engine.okay()
-    expect(store.pracs[idx1]!.status).toBe('waiting')
+    expect(store.pracs[idx1]!.status).toBe('review')
+    expect(store.pracs[idx1]!.due_counter).toBe(1)
 
     const idx2 = engine.pracIdx!
     await engine.okay()
     expect(store.pracs[idx2]!.status).toBe('review')
-    expect(store.pracs[idx2]!.due_counter).toBe(1)
+    expect(store.pracs[idx2]!.due_dates).toBe(4)
+    
   })
-
+  
   it ('"new" item gets promoted to "learning" when moves from WW to LW', async () => {
     const store = makeStore({
       pracs: [

@@ -123,6 +123,19 @@ export class PracEngine {
       this.ww.pop()
     }
 
+    // move from ww to lw
+    while (this.ww.length && this.lw.length < this.lwsize) {
+      const pix = this.ww.shift()!
+      if (!['review', 'waiting'].includes(this.store.pracs[pix]!.status)) {
+	this.store.pracs[pix]!.status = 'learning'
+      }
+      this.lw.push(pix)
+      // this.store.createWordsNoPrac()  // why here?
+    }
+    
+    if (this.statusMove('learning')) return
+    if (this.statusMove('waiting')) return
+    
     // due pracs
     const currentWindows = [...this.lw, ...this.ww]
     const due: number[] = []
@@ -138,18 +151,8 @@ export class PracEngine {
     }
     if (this.moveToWins(due)) return
 
-    // move from ww to lw
-    while (this.ww.length && this.lw.length < this.lwsize) {
-      const pix = this.ww.shift()!
-      if (!['review', 'waiting'].includes(this.store.pracs[pix]!.status)) {
-	this.store.pracs[pix]!.status = 'learning'
-      }
-      this.lw.push(pix)
-      this.store.createWordsNoPrac()  // why here?
-    }
-
-    if (this.statusMove('learning')) return
-    if (this.statusMove('waiting')) return
+    // if (this.statusMove('learning')) return
+    // if (this.statusMove('waiting')) return
     if (this.statusMove('new')) return
 
     // words w/o practices
