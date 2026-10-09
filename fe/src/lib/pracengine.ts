@@ -190,12 +190,12 @@ export class PracEngine {
     this.store.wordsNoPrac = [...wnp]
   }
 
-  async doPrac() {
+  doPrac() {
     // if the session is very long
-    if (this.store.isNextDayOrLater(this.store.lastSyncTime, this.now())) {
-      this.resetWindows()
-      await this.store.syncServer()
-    }
+    // if (this.store.isNextDayOrLater(this.store.lastSyncTime, this.now())) {
+    //   this.resetWindows()
+    //   await this.store.syncServer()
+    // }
 
     this.fillWins()
     if (this.lw.length === 0) { // no more prac
@@ -218,7 +218,7 @@ export class PracEngine {
     this.store.pracs[idx]!.status = 'learning'
     this.store.pracs[idx]!.last_edited = this.now().toISOString()
     this.store.pracs[idx]!.last_practiced = this.now().toISOString()
-    await this.doPrac()
+    this.doPrac()
   }
 
   async memorized() {
@@ -242,7 +242,7 @@ export class PracEngine {
     this.lw.shift()
     this.store.pracs[idx]!.last_edited = this.now().toISOString()
     this.store.pracs[idx]!.last_practiced = this.now().toISOString()
-    await this.doPrac()
+    this.doPrac()
   }
 
   async okay() {
@@ -284,7 +284,7 @@ export class PracEngine {
 
     prac.last_edited = this.now().toISOString()
     prac.last_practiced = this.now().toISOString()
-    await this.doPrac()
+    this.doPrac()
   }
 
   getInfoDue(): number {

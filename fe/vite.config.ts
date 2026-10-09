@@ -22,9 +22,11 @@ export default defineConfig({
       '/auth': 'http://localhost:8000',
       '/books': 'http://localhost:8000',
       '/words': 'http://localhost:8000',
-      '/prac': 'http://localhost:8000',
+      '/import': 'http://localhost:8000',
+      '/export': 'http://localhost:8000',
       '/sync': 'http://localhost:8000',
       '/logout': 'http://localhost:8000',
+      '/importcsv': 'http://localhost:8000',
     },
   },
 })

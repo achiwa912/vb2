@@ -28,6 +28,7 @@ let startY = 0
 const isAutoplay = ref(false)
 const voices = ref<SpeechSynthesisVoice[]>([]) // for TTS
 
+let unmounted = false
 let mq: MediaQueryList | null = null
 const onMqChange = (e: MediaQueryListEvent) => { prefersReducedMotion.value = e.matches }
 
@@ -61,7 +62,7 @@ const flipCard = () => {
 async function manualSync() {
   engine.resetWindows()
   await booksStore.syncServer()
-  await engine.doPrac()
+  engine.doPrac()
 }
 
 // watch(() => engine.infoTried, () => {
@@ -90,7 +91,7 @@ const updateWord = async () => {
   }
   closeModal()
   await booksStore.syncBook()
-  await engine.doPrac()
+  engine.doPrac()
 }
 
 const deleteWord = async () => {
@@ -104,7 +105,7 @@ const deleteWord = async () => {
   }
   closeModal()
   await booksStore.syncBook()
-  await engine.doPrac()
+  engine.doPrac()
 }
 
 
@@ -468,8 +469,6 @@ function dismissHelpOnPointerDown() {
 }
 
 onMounted(async () => {
-  window.addEventListener('pointerdown', dismissHelpOnPointerDown)
-  window.addEventListener("keydown", handleKeyDown)
   engine.resetWindows()
   mq = window.matchMedia('(prefers-reduced-motion: reduce)')
   prefersReducedMotion.value = mq.matches
@@ -479,10 +478,16 @@ onMounted(async () => {
     window.speechSynthesis.onvoiceschanged = loadVoices
   }
   await booksStore.syncServer()
-  await engine.doPrac()
+  if (unmounted) return
+  engine.doPrac()
+  if (unmounted) return
+
+  window.addEventListener('pointerdown', dismissHelpOnPointerDown)
+  window.addEventListener("keydown", handleKeyDown)
 })
 
 onUnmounted(() => {
+  unmounted = true
   clearTimer()
   window.removeEventListener('keydown', handleKeyDown)
   window.removeEventListener('pointerdown', dismissHelpOnPointerDown)
