@@ -278,7 +278,7 @@ const speakTts = (txt: string) => {
   speakTimer = window.setTimeout(() => {
     speakTimer = null
     const utterance = new SpeechSynthesisUtterance(txt)
-    //utterance.lang = 'en-US'
+    utterance.lang = 'en-US'
     utterance.rate = 1.1
 
     const preferredFemaleVoices = [
