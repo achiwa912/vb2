@@ -46,6 +46,7 @@ export class PracEngine {
   private store: PracStoreLike
   private lwsize: number
   private wwsize: number
+  private newWordsCap: number
   private random: () => number
   private now: () => Date
 
@@ -63,6 +64,7 @@ export class PracEngine {
     this.infoMem = 0
     this.isFlipped = false
     this.undoArray = []
+    this.newWordsCap = 20  // daily new words cap (actually, per session)
   }
 
   resetWindows() {
@@ -158,6 +160,14 @@ export class PracEngine {
     // words w/o practices
     const wnp = [...this.store.wordsNoPrac]
     for (const wix of this.store.wordsNoPrac) {
+      if (this.lw.length === this.lwsize && this.ww.length === this.wwsize) {
+	break
+      }
+      this.newWordsCap -= 1
+      if (this.newWordsCap < 0) {
+	this.newWordsCap = 0
+	break
+      }
       const p: PracticeSchema = {
 	direction: this.store.pracDir!,
 	due_counter: null,
@@ -183,9 +193,6 @@ export class PracEngine {
 	this.ww.push(pix)
       }
 
-      if (this.lw.length === this.lwsize && this.ww.length === this.wwsize) {
-	break
-      }
     }
     this.store.wordsNoPrac = [...wnp]
   }

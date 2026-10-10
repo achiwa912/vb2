@@ -1637,3 +1637,20 @@ src/views/PracView.vue:  await booksStore.syncServer()
 **** Mixed
 - macOS, iOS - Ava
 - macOS, iOS - Zoe
+
+*** bug - race syncServer with okay, once more, etc.??? (10/9)
+- Saw the last word remains on a flashcard even if I click okay many times
+  - Then, moving to booksview didn't work?  Needed to reload.
+- Saw the same word twice in a row though lw has 2 words
+- Can't reproduce locally
+- Likely culprit is the next day check in a prac session
+  - Originally, it was to check if user stays in prac session for too long, and then forcefully sync with server
+  - But it looks to sync every morning for every book when I start a session, which is not intended
+- Fix: Removed the next day check to avoid race.  (not a great fix, though)
+- The fix means that it would be challenging to do periodic sync in the background as a possible enhancement.
+- Unknown:
+  - The race might not be the cause.  In this case, I'll see the issue again.
+  - Is this something to do with the fillWins fix the day before???
+
+
+*** New feature: cap daily new words to 20 (default)
