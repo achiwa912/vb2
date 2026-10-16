@@ -14,7 +14,7 @@ const handleCredentialResponse = async (response: { credential: string }) => {
 
   try {
     // Send token to your Flask backend for verification
-    const res = await fetch('/auth/ggl', {
+    const res = await fetch('/api/auth/ggl', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: idToken })

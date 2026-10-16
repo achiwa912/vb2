@@ -1654,3 +1654,57 @@ src/views/PracView.vue:  await booksStore.syncServer()
 
 
 *** New feature: cap daily new words to 20 (default)
+- Is 20 a little too challenging for average users?
+
+*** New feature: survive reload
+- use cases
+  - reload page
+    - save pending updates
+    - resume prac
+  - reload page while offline
+    - keep pending updates
+    - resume prac
+  - [edge] multiple tabs, same user
+  - [edge] multiple tabs, different users
+  - [edge] single tab - user change (login) 
+  - [do not support] close a tab -> save pending updates
+  - [do not support] duplicate tab (same session ID)
+- sessionStorage
+  - has session ID
+- localStorage
+  - book(s), words and pracs shapshot 
+    - -> required for offline reload, resume, and syncServer
+  - activeBookId, pracDir (to resume prac)
+  - updated pracs log
+  - list of session IDs
+  - sessionStorage key: value - sessionId: string (UID)
+  - localStorage keys: values
+    - session list - vb2:sessions: Array<{'id': string, 'updated': string }>
+    - snapshot - vb2:<sessionId>:snapshot: { books, words, pracs, activeBookId, pracDir }
+    - log - vb2:<sessionId>:log:<counter>: prac
+- counter for log records
+  - booksStorage
+  - initialize
+    - when sessionId is generated
+  - recover
+    - on reload.
+- save 
+  - okay, once more and memorized, just before doPrac
+  - update localStorage timestamp for every 20 actions
+- syncPending (from onMounted)
+  - retrieve session ID from sessionStorage.  if null:
+    - generate session ID, its snapshot in localStorage
+    - cleanup >30 days old snapshot & log
+    - quit
+  - update localStorage timestamp
+  - cleanup >30 days old snapshot & log
+  - replay log to snapshot (for the session)
+    - quit if different user
+  - clear log
+- syncServer, if successful 
+  - update snapshot (in WordsView, PracView)
+  - clear session ID (in list; in BooksView)
+
+**** bug
+- /words conflicts with backend
+- time to migrate be api under /api

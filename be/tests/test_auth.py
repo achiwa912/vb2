@@ -23,7 +23,7 @@ def test_auth_ggl_new_user(client: FlaskClient, test_app: Flask) -> None:
             "email": "new@example.com",
             "name": "New User",
         }
-        resp = client.post("/auth/ggl", json={"token": "fake-token"})
+        resp = client.post("/api/auth/ggl", json={"token": "fake-token"})
 
     assert resp.status_code == 200
     data = AuthResponse.model_validate(resp.get_json())
@@ -47,7 +47,7 @@ def test_auth_ggl_existing_user(client: FlaskClient, user1: User) -> None:
             "email": user1.email,
             "name": user1.name,
         }
-        resp = client.post("/auth/ggl", json={"token": "fake-token"})
+        resp = client.post("/api/auth/ggl", json={"token": "fake-token"})
 
     assert resp.status_code == 200
     data = AuthResponse.model_validate(resp.get_json())
@@ -59,7 +59,7 @@ def test_auth_ggl_invalid_token(client: FlaskClient) -> None:
     """Invalid Google token should return 401."""
     with patch("be.api.id_token.verify_oauth2_token") as mock_verify:
         mock_verify.side_effect = ValueError("Invalid token")
-        resp = client.post("/auth/ggl", json={"token": "bad-token"})
+        resp = client.post("/api/auth/ggl", json={"token": "bad-token"})
 
     assert resp.status_code == 401
     assert resp.get_json() == {"message": "Invalid Google token"}
@@ -67,5 +67,5 @@ def test_auth_ggl_invalid_token(client: FlaskClient) -> None:
 
 def test_protected_endpoint_requires_jwt(client: FlaskClient) -> None:
     """Any protected endpoint without a token should return 401."""
-    resp = client.get("/books")
+    resp = client.get("/api/books")
     assert resp.status_code == 401

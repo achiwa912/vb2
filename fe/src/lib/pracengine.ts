@@ -1,4 +1,5 @@
 import type { components } from '@/types/api'
+import type { LogRecord } from '@/stores/books'
 
 type PracticeSchema = components['schemas']['PracticeSchema']
 type WordSchema = components['schemas']['WordSchema']
@@ -10,7 +11,11 @@ export interface PracStoreLike {
   wordsNoPrac: number[]
   pracDir: PracDir | null
   lastSyncTime: Date | null
+  pracCounter: number
   userId: number | null
+  infoMem: number
+  infoTried: number
+  newWordsCap: number
   createWordsNoPrac(): void
   syncServer(): Promise<boolean>
   isNextDayOrLater(date: Date | null, now?: Date): boolean
@@ -38,15 +43,15 @@ export class PracEngine {
   lw: number[]
   ww: number[]
   pracIdx: number | null
-  infoTried: number
-  infoMem: number
+  //infoTried: number
+  //infoMem: number
   isFlipped: boolean
   undoArray: UndoState[]
+  //newWordsCap: number
   
   private store: PracStoreLike
   private lwsize: number
   private wwsize: number
-  private newWordsCap: number
   private random: () => number
   private now: () => Date
 
@@ -60,11 +65,14 @@ export class PracEngine {
     this.lw = []
     this.ww = []
     this.pracIdx = null
-    this.infoTried = 0
-    this.infoMem = 0
     this.isFlipped = false
     this.undoArray = []
-    this.newWordsCap = 20  // daily new words cap (actually, per session)
+    //this.infoTried = 0
+    //this.infoMem = 0
+    //this.newWordsCap = 20  // daily new words cap (actually, per session)
+    this.store.infoTried = 0
+    this.store.infoMem = 0
+    this.store.newWordsCap = 20  // daily new words cap (actually, per session)
   }
 
   resetWindows() {
@@ -163,9 +171,9 @@ export class PracEngine {
       if (this.lw.length === this.lwsize && this.ww.length === this.wwsize) {
 	break
       }
-      this.newWordsCap -= 1
-      if (this.newWordsCap < 0) {
-	this.newWordsCap = 0
+      this.store.newWordsCap -= 1
+      if (this.store.newWordsCap < 0) {
+	this.store.newWordsCap = 0
 	break
       }
       const p: PracticeSchema = {
@@ -192,18 +200,13 @@ export class PracEngine {
       } else if (this.ww.length < this.wwsize) {
 	this.ww.push(pix)
       }
+      this.logPrac(pix)
 
     }
     this.store.wordsNoPrac = [...wnp]
   }
 
   doPrac() {
-    // if the session is very long
-    // if (this.store.isNextDayOrLater(this.store.lastSyncTime, this.now())) {
-    //   this.resetWindows()
-    //   await this.store.syncServer()
-    // }
-
     this.fillWins()
     if (this.lw.length === 0) { // no more prac
       this.pracIdx = null
@@ -213,10 +216,39 @@ export class PracEngine {
     this.pracIdx = this.lw[0]!
   }
 
+  logPrac(idx: number) {
+    const sessionId = sessionStorage.getItem('vb2:sessionId')
+    if (!sessionId) return
+    if (!this.store.pracs[idx]) return
+    const record: LogRecord = {
+      prac: this.store.pracs[idx],
+      infoMem: this.store.infoMem,
+      infoTried: this.store.infoTried,
+      newWordsCap: this.store.newWordsCap
+    }
+    localStorage.setItem(`vb2:${sessionId}:log:${this.store.pracCounter}`, JSON.stringify(record))
+    if (this.store.pracCounter % 20 == 0) { // once every 20 writes
+      const existing = localStorage.getItem('vb2:sessions')
+      const sessions = existing ? JSON.parse(existing) : []
+      let i = 0
+      for (; i<sessions.length; i++) {
+	if (sessions[i].id == sessionId) {
+	  sessions[i].updated = new Date().toISOString()
+	  break
+	}
+      }
+      if (i==sessions.length) {
+	sessions.push({'id': sessionId, 'updated': new Date().toISOString()})
+      }
+      localStorage.setItem('vb2:sessions', JSON.stringify(sessions))
+    }
+    this.store.pracCounter += 1
+  }
+  
   async onceMore() {
     if (this.lw.length == 0) return
     this.saveUndo()
-    this.infoTried++
+    this.store.infoTried++
     this.isFlipped = false
     const idx = this.lw.shift() ?? null
     if (idx === null) return
@@ -226,13 +258,14 @@ export class PracEngine {
     this.store.pracs[idx]!.last_edited = this.now().toISOString()
     this.store.pracs[idx]!.last_practiced = this.now().toISOString()
     this.doPrac()
+    this.logPrac(idx)
   }
 
   async memorized() {
     if (this.lw.length == 0) return
     this.saveUndo()
-    this.infoTried++
-    this.infoMem++
+    this.store.infoTried++
+    this.store.infoMem++
     this.isFlipped = false
     const idx = this.pracIdx
     if (idx === null) return
@@ -250,13 +283,14 @@ export class PracEngine {
     this.store.pracs[idx]!.last_edited = this.now().toISOString()
     this.store.pracs[idx]!.last_practiced = this.now().toISOString()
     this.doPrac()
+    this.logPrac(idx)
   }
 
   async okay() {
     if (this.lw.length == 0) return
     this.saveUndo()
-    this.infoTried++
-    this.infoMem++
+    this.store.infoTried++
+    this.store.infoMem++
     this.isFlipped = false
     const idx = this.pracIdx
     if (idx === null) return
@@ -292,6 +326,7 @@ export class PracEngine {
     prac.last_edited = this.now().toISOString()
     prac.last_practiced = this.now().toISOString()
     this.doPrac()
+    this.logPrac(idx)
   }
 
   getInfoDue(): number {
@@ -330,8 +365,8 @@ export class PracEngine {
 
   saveUndo() {
     const elem: UndoState = {
-      "infoTried": this.infoTried,
-      "infoMem": this.infoMem,
+      "infoTried": this.store.infoTried,
+      "infoMem": this.store.infoMem,
       "isFlipped": this.isFlipped,
       "lw": [...this.lw],
       "ww": [...this.ww],
@@ -345,8 +380,8 @@ export class PracEngine {
   undo() {
     if (!this.undoArray) return
     const elem: UndoState = this.undoArray.pop()!
-    this.infoTried = elem.infoTried
-    this.infoMem = elem.infoMem
+    this.store.infoTried = elem.infoTried
+    this.store.infoMem = elem.infoMem
     this.isFlipped = elem.isFlipped
     this.lw = [...elem.lw]
     this.ww = [...elem.ww]

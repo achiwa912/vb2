@@ -22,7 +22,7 @@ def test_list_books_only_own(
         db.session.add_all([b1, b2])
         db.session.commit()
 
-    resp = client.get("/books", headers=csrf_headers1)
+    resp = client.get("/api/books", headers=csrf_headers1)
     assert resp.status_code == 200
 
     adapter = TypeAdapter(list[BookSchema])
@@ -44,7 +44,7 @@ def test_list_book_words_not_owned_returns_404(
         db.session.commit()
         book_id = book.id
 
-    resp = client.get(f"/books/{book_id}/words", headers=csrf_headers1)
+    resp = client.get(f"/api/books/{book_id}/words", headers=csrf_headers1)
     assert resp.status_code == 404
 
 
@@ -59,7 +59,7 @@ def test_edit_book_not_owned_returns_404(
         book_id = book.id
 
     resp = client.patch(
-        f"/books/{book_id}", json={"name": "Hacked"}, headers=csrf_headers1
+        f"/api/books/{book_id}", json={"name": "Hacked"}, headers=csrf_headers1
     )
     assert resp.status_code == 404
 
@@ -74,7 +74,7 @@ def test_delete_book_not_owned_returns_404(
         db.session.commit()
         book_id = book.id
 
-    resp = client.delete(f"/books/{book_id}", headers=csrf_headers1)
+    resp = client.delete(f"/api/books/{book_id}", headers=csrf_headers1)
     assert resp.status_code == 404
 
 
@@ -89,7 +89,7 @@ def test_create_word_in_other_users_book_returns_404(
         book_id = book.id
 
     resp = client.post(
-        f"/books/{book_id}/words",
+        f"/api/books/{book_id}/words",
         json={"word": "test", "definition": "def", "sample": ""},
         headers=csrf_headers1,
     )
@@ -114,7 +114,7 @@ def test_edit_word_not_owned_returns_404(
         word_id = word.id
 
     resp = client.patch(
-        f"/books/{book_id}/words/{word_id}",
+        f"/api/books/{book_id}/words/{word_id}",
         json={"definition": "new"},
         headers=csrf_headers1,
     )
@@ -138,5 +138,5 @@ def test_delete_word_not_owned_returns_404(
         book_id = book.id
         word_id = word.id
 
-    resp = client.delete(f"/books/{book_id}/words/{word_id}", headers=csrf_headers1)
+    resp = client.delete(f"/api/books/{book_id}/words/{word_id}", headers=csrf_headers1)
     assert resp.status_code == 404

@@ -64,7 +64,7 @@ def test_sync_conflict_incoming_newer_wins(
             ]
         )
         resp = client.post(
-            f"/sync/{book.id}",
+            f"/api/sync/{book.id}",
             json=sync_payload.model_dump(mode="json"),
             headers=csrf_headers1,
         )
@@ -144,7 +144,7 @@ def test_sync_conflict_server_newer_wins(
             ]
         )
         resp = client.post(
-            f"/sync/{book.id}",
+            f"/api/sync/{book.id}",
             json=sync_payload.model_dump(mode="json"),
             headers=csrf_headers1,
         )
@@ -226,7 +226,7 @@ def test_sync_conflict_status_learning_overrides_new(
             ]
         )
         resp = client.post(
-            f"/sync/{book.id}",
+            f"/api/sync/{book.id}",
             json=sync_payload.model_dump(mode="json"),
             headers=csrf_headers1,
         )
@@ -328,7 +328,7 @@ def test_sync_conflict_multiple_directions_updates_aggregates_correctly(
             ]
         )
         resp = client.post(
-            f"/sync/{book.id}",
+            f"/api/sync/{book.id}",
             json=sync_payload.model_dump(mode="json"),
             headers=csrf_headers1,
         )

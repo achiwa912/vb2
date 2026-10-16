@@ -5,6 +5,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useBooksStore } from '@/stores/books'
 import { useUserStore } from '@/stores/user'
 import { client } from '@/api/client'
+import { toastRef } from '@/lib/toast'
 
 const router = useRouter()
 const route = useRoute()
@@ -23,9 +24,18 @@ function quitDemo() {
 }
 
 async function logout() {
-  await client.POST('/logout')
-  userStore.unsetUser()
-  router.push('/login')
+  if (!(await booksStore.syncServer())) {
+    toastRef.value?.showAlert(`Sync with server failed`, 'error')
+    return
+  }
+  booksStore.loggingOut = true
+  try {
+    await client.POST('/api/logout')
+    userStore.unsetUser()
+    await router.push('/login')
+  } finally {
+    booksStore.loggingOut = false
+  }
 }
 
 async function goHome() {
@@ -35,7 +45,7 @@ async function goHome() {
     return
   }
   if (route.path == '/prac') {
-      await booksStore.syncServer()
+    await booksStore.syncServer()
   }
   booksStore.activeBookId = null
   router.push('/')

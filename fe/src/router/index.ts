@@ -21,7 +21,7 @@ const router = createRouter({
 
 router.beforeEach((to, from) => {
   const booksStore = useBooksStore()
-  console.log(from.path, to.path)
+  //console.log(from.path, to.path)
   
   if (!from.path.startsWith('/demo') && to.path == '/demo/prac') {
     return '/demo'
@@ -32,10 +32,10 @@ router.beforeEach((to, from) => {
   }
 })
 
-router.afterEach((to, from) => {
-  console.log('AFTER', from.path, '->', to.path)
-  console.log('URL:', window.location.pathname)  
-})
+//router.afterEach((to, from) => {
+  //console.log('AFTER', from.path, '->', to.path)
+  //console.log('URL:', window.location.pathname)  
+//})
 
 // router.afterEach((to) => console.log('after', to.path, window.location.pathname))
 

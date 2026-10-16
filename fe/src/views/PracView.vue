@@ -5,12 +5,13 @@ import { useBooksStore } from '@/stores/books'
 import { PracEngine } from '@/lib/pracengine'
 import { ThumbsUp, ThumbsDown, SkipForward, Music, Music3, RefreshCw, Check, X, SquarePen, Undo2 } from '@lucide/vue'
 import Navbar from '@/components/Navbar.vue'
-import ToastContainer from '@/components/ToastContainer.vue'
+//import ToastContainer from '@/components/ToastContainer.vue'
+import { toastRef } from '@/lib/toast'
 
 const router = useRouter()
 const route = useRoute()
 const booksStore = useBooksStore()
-const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
+//const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
 const modalRef = ref<HTMLDialogElement | null>(null)
 const editWord = ref<string>('')
 const editDef = ref<string>('')
@@ -32,8 +33,10 @@ let unmounted = false
 let mq: MediaQueryList | null = null
 const onMqChange = (e: MediaQueryListEvent) => { prefersReducedMotion.value = e.matches }
 
-const infoMem = computed(() => engine.infoMem)
-const infoTried = computed(() => engine.infoTried)
+//const infoMem = computed(() => engine.infoMem)
+//const infoTried = computed(() => engine.infoTried)
+const infoMem = computed(() => booksStore.infoMem)
+const infoTried = computed(() => booksStore.infoTried)
 
 const infoRemain = computed(() => engine.getInfoRemain())
 const infoWithin3 = computed(() => engine.getInfoWithin3())
@@ -313,7 +316,7 @@ const speakTts = (txt: string) => {
 }
 
 // 1. When a new card is loaded, reset flip and speak the front (if autoplay on)
-watch(() => engine.infoTried, async (id) => {
+watch(() => booksStore.infoTried, async (id) => {
   if (id == null) return
   engine.isFlipped = false
   if (!isAutoplay.value) return
@@ -336,6 +339,7 @@ watch(isAutoplay, (on) => {
 })
 
 onBeforeRouteLeave(async () => {
+  if (booksStore.loggingOut) return
   engine.isFlipped = false
   const success = await booksStore.syncServer()
   if (!success) {
@@ -469,6 +473,7 @@ function dismissHelpOnPointerDown() {
 }
 
 onMounted(async () => {
+  booksStore.syncPending()
   engine.resetWindows()
   mq = window.matchMedia('(prefers-reduced-motion: reduce)')
   prefersReducedMotion.value = mq.matches
@@ -477,7 +482,9 @@ onMounted(async () => {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = loadVoices
   }
-  await booksStore.syncServer()
+  if (await booksStore.syncServer()) {
+    booksStore.updateSnapshot()
+  }
   if (unmounted) return
   engine.doPrac()
   if (unmounted) return
@@ -506,8 +513,6 @@ onUnmounted(() => {
     </div>
   </Navbar>
 
-  <ToastContainer ref="toastRef" />
-  
   <div>
     <!-- Title -->
     <div class="flex mt-4 mx-4 items-end gap-1">
@@ -522,8 +527,8 @@ onUnmounted(() => {
       <div class="card-body py-3 sm:py-4">
 	<div class="grid grid-cols-3 gap-4">
 	  <div class="flex items-center gap-1"><Check />{{ infoMem }} <X />{{ infoTried - infoMem }}</div>
-	  <div>{{ infoRemain }} left</div>
-	  <div>+{{ infoWithin3 }} coming up</div>
+	  <div>{{ booksStore.newWordsCap }} ({{ infoRemain }}) left</div>
+	  <div>+{{ infoWithin3 }} soon</div>
 	</div>
       </div>
     </div>
@@ -644,6 +649,9 @@ onUnmounted(() => {
 	<h3 class="text-xl font-semibold text-base-content">
 	  No items to practice today
 	</h3>
+	<div v-if="infoRemain > 0" class="text-md font-semibold text-base-content">
+	  You've done today's quota.
+	</div>
 	<p class="text-base-content/70">
 	  Way to go!
 	</p>

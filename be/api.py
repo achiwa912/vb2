@@ -99,7 +99,7 @@ if __name__ == "__main__":
         db.create_all()
 
 
-@app.post("/auth/ggl", responses={200: GglAuthResp, 401: MessageResp})
+@app.post("/api/auth/ggl", responses={200: GglAuthResp, 401: MessageResp})
 @limiter.limit("10 per minute")
 def auth_ggl(body: GglAuthReq):
     try:
@@ -130,7 +130,7 @@ def auth_ggl(body: GglAuthReq):
     return resp  # 200 is assumed
 
 
-@app.post("/logout", responses={200: None})
+@app.post("/api/logout", responses={200: None})
 @limiter.limit("10 per minute")
 def logout():
     resp = jsonify(None)
@@ -138,7 +138,7 @@ def logout():
     return resp  # 200 is assumed
 
 
-@app.get("/books", responses={200: ListBooksResp})
+@app.get("/api/books", responses={200: ListBooksResp})
 @jwt_required()
 def list_books() -> dict[str, ListBooksResp]:
     user_id = int(get_jwt_identity())
@@ -152,7 +152,7 @@ MAX_WORDS = 1000
 
 
 @app.post(
-    "/books/<int:id>/words",
+    "/api/books/<int:id>/words",
     responses={200: WordResp, 403: MessageResp, 404: MessageResp},
 )
 @jwt_required()
@@ -182,7 +182,7 @@ def create_word(path: BookPath, body: CreateWordReq) -> tuple[dict[str, str], in
 
 
 @app.patch(
-    "/books/<int:bid>/words/<int:wid>", responses={200: WordResp, 404: MessageResp}
+    "/api/books/<int:bid>/words/<int:wid>", responses={200: WordResp, 404: MessageResp}
 )
 @jwt_required()
 def edit_word(path: WordPath, body: PatchWordReq) -> tuple[dict[str, str], int]:
@@ -206,7 +206,9 @@ def edit_word(path: WordPath, body: PatchWordReq) -> tuple[dict[str, str], int]:
     return WordResp.model_validate({"word": w}).model_dump(mode="json"), 200
 
 
-@app.delete("/books/<int:bid>/words/<int:wid>", responses={200: None, 404: MessageResp})
+@app.delete(
+    "/api/books/<int:bid>/words/<int:wid>", responses={200: None, 404: MessageResp}
+)
 @jwt_required()
 def delete_word(path: WordPath) -> tuple[dict[str, str], int]:
     user_id = int(get_jwt_identity())
@@ -227,7 +229,7 @@ def delete_word(path: WordPath) -> tuple[dict[str, str], int]:
 MAX_BOOKS = 20
 
 
-@app.post("/books", responses={200: BookResp, 403: MessageResp})
+@app.post("/api/books", responses={200: BookResp, 403: MessageResp})
 @jwt_required()
 def create_book(
     body: CreateBookReq,
@@ -248,7 +250,7 @@ def create_book(
 
 
 @app.patch(
-    "/books/<int:id>", responses={200: BookResp, 400: MessageResp, 404: MessageResp}
+    "/api/books/<int:id>", responses={200: BookResp, 400: MessageResp, 404: MessageResp}
 )
 @jwt_required()
 def edit_book(path: BookPath, body: PatchBookReq) -> tuple[dict[str, str], int]:
@@ -267,7 +269,7 @@ def edit_book(path: BookPath, body: PatchBookReq) -> tuple[dict[str, str], int]:
 
 
 @app.delete(
-    "/books/<int:id>", responses={200: None, 400: MessageResp, 404: MessageResp}
+    "/api/books/<int:id>", responses={200: None, 400: MessageResp, 404: MessageResp}
 )
 @jwt_required()
 def delete_book(path: BookPath):
@@ -286,7 +288,7 @@ def delete_book(path: BookPath):
     return {"message": f"Deleted book id={path.id}"}, 200
 
 
-@app.get("/books/<int:id>/words", responses={200: ListWordsResp, 404: MessageResp})
+@app.get("/api/books/<int:id>/words", responses={200: ListWordsResp, 404: MessageResp})
 @jwt_required()
 def list_book_words(path: BookPath) -> tuple[dict[str, str], int]:
     user_id = int(get_jwt_identity())
@@ -302,7 +304,7 @@ def list_book_words(path: BookPath) -> tuple[dict[str, str], int]:
 
 
 @app.post(
-    "/importcsv/<int:id>",
+    "/api/importcsv/<int:id>",
     responses={
         200: ImportCsvResp,
         400: MessageResp,
@@ -378,7 +380,7 @@ def import_csv(path: BookPath, form: ImportCsvReq):
     return imprt.model_dump(mode="json"), 200
 
 
-@app.post("/import", responses={200: None, 400: MessageResp})
+@app.post("/api/import", responses={200: None, 400: MessageResp})
 @jwt_required()
 def import_all(body: ExportResp):
     user_id = int(get_jwt_identity())
@@ -474,7 +476,7 @@ def import_all(body: ExportResp):
     return "", 200
 
 
-@app.get("/export", responses={200: ExportResp, 404: MessageResp})
+@app.get("/api/export", responses={200: ExportResp, 404: MessageResp})
 @jwt_required()
 def export_all():
     user_id = int(get_jwt_identity())
@@ -503,7 +505,7 @@ def export_all():
     return exprt.model_dump(mode="json"), 200
 
 
-@app.post("/sync/<int:id>", responses={200: SyncBookResp, 404: MessageResp})
+@app.post("/api/sync/<int:id>", responses={200: SyncBookResp, 404: MessageResp})
 @jwt_required()
 def sync_book(path: BookPath, body: SyncBookReq) -> tuple[dict[str, str], int]:
     user_id = int(get_jwt_identity())

@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/auth/ggl": {
+    "/api/auth/ggl": {
         parameters: {
             query?: never;
             header?: never;
@@ -13,46 +13,30 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["auth_ggl_auth_ggl_post"];
+        post: operations["auth_ggl_api_auth_ggl_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/books": {
+    "/api/books": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["list_books_books_get"];
+        get: operations["list_books_api_books_get"];
         put?: never;
-        post: operations["create_book_books_post"];
+        post: operations["create_book_api_books_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/books/{bid}/words/{wid}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["delete_word_books__int_bid__words__int_wid__delete"];
-        options?: never;
-        head?: never;
-        patch: operations["edit_word_books__int_bid__words__int_wid__patch"];
-        trace?: never;
-    };
-    "/books/{id}": {
+    "/api/books/{bid}/words/{wid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -62,36 +46,52 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["delete_book_books__int_id__delete"];
+        delete: operations["delete_word_api_books__int_bid__words__int_wid__delete"];
         options?: never;
         head?: never;
-        patch: operations["edit_book_books__int_id__patch"];
+        patch: operations["edit_word_api_books__int_bid__words__int_wid__patch"];
         trace?: never;
     };
-    "/books/{id}/words": {
+    "/api/books/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["list_book_words_books__int_id__words_get"];
+        get?: never;
         put?: never;
-        post: operations["create_word_books__int_id__words_post"];
+        post?: never;
+        delete: operations["delete_book_api_books__int_id__delete"];
+        options?: never;
+        head?: never;
+        patch: operations["edit_book_api_books__int_id__patch"];
+        trace?: never;
+    };
+    "/api/books/{id}/words": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_book_words_api_books__int_id__words_get"];
+        put?: never;
+        post: operations["create_word_api_books__int_id__words_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/export": {
+    "/api/export": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["export_all_export_get"];
+        get: operations["export_all_api_export_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -100,7 +100,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/import": {
+    "/api/import": {
         parameters: {
             query?: never;
             header?: never;
@@ -109,14 +109,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["import_all_import_post"];
+        post: operations["import_all_api_import_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/importcsv/{id}": {
+    "/api/importcsv/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -125,14 +125,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["import_csv_importcsv__int_id__post"];
+        post: operations["import_csv_api_importcsv__int_id__post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/logout": {
+    "/api/logout": {
         parameters: {
             query?: never;
             header?: never;
@@ -141,14 +141,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["logout_logout_post"];
+        post: operations["logout_api_logout_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/sync/{id}": {
+    "/api/sync/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -157,7 +157,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["sync_book_sync__int_id__post"];
+        post: operations["sync_book_api_sync__int_id__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -413,7 +413,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    auth_ggl_auth_ggl_post: {
+    auth_ggl_api_auth_ggl_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -455,7 +455,7 @@ export interface operations {
             };
         };
     };
-    list_books_books_get: {
+    list_books_api_books_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -484,7 +484,7 @@ export interface operations {
             };
         };
     };
-    create_book_books_post: {
+    create_book_api_books_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -526,7 +526,7 @@ export interface operations {
             };
         };
     };
-    delete_word_books__int_bid__words__int_wid__delete: {
+    delete_word_api_books__int_bid__words__int_wid__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -565,7 +565,7 @@ export interface operations {
             };
         };
     };
-    edit_word_books__int_bid__words__int_wid__patch: {
+    edit_word_api_books__int_bid__words__int_wid__patch: {
         parameters: {
             query?: never;
             header?: never;
@@ -610,7 +610,7 @@ export interface operations {
             };
         };
     };
-    delete_book_books__int_id__delete: {
+    delete_book_api_books__int_id__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -657,7 +657,7 @@ export interface operations {
             };
         };
     };
-    edit_book_books__int_id__patch: {
+    edit_book_api_books__int_id__patch: {
         parameters: {
             query?: never;
             header?: never;
@@ -710,7 +710,7 @@ export interface operations {
             };
         };
     };
-    list_book_words_books__int_id__words_get: {
+    list_book_words_api_books__int_id__words_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -750,7 +750,7 @@ export interface operations {
             };
         };
     };
-    create_word_books__int_id__words_post: {
+    create_word_api_books__int_id__words_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -803,7 +803,7 @@ export interface operations {
             };
         };
     };
-    export_all_export_get: {
+    export_all_api_export_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -841,7 +841,7 @@ export interface operations {
             };
         };
     };
-    import_all_import_post: {
+    import_all_api_import_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -881,7 +881,7 @@ export interface operations {
             };
         };
     };
-    import_csv_importcsv__int_id__post: {
+    import_csv_api_importcsv__int_id__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -943,7 +943,7 @@ export interface operations {
             };
         };
     };
-    logout_logout_post: {
+    logout_api_logout_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -970,7 +970,7 @@ export interface operations {
             };
         };
     };
-    sync_book_sync__int_id__post: {
+    sync_book_api_sync__int_id__post: {
         parameters: {
             query?: never;
             header?: never;

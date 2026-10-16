@@ -32,13 +32,13 @@ def test_edit_book_normalizes_datetime_to_utc_and_serializes_z(
         book_id = book.id
 
     resp = client.patch(
-        f"/books/{book_id}",
+        f"/api/books/{book_id}",
         json={"name": "Updated"},
         headers=csrf_headers1,
     )
     assert resp.status_code == 200
 
-    list_resp = client.get("/books", headers=csrf_headers1)
+    list_resp = client.get("/api/books", headers=csrf_headers1)
     assert list_resp.status_code == 200
 
     adapter = TypeAdapter(list[BookSchema])
@@ -83,7 +83,7 @@ def test_create_word_normalizes_datetime(
         book_id = book.id
 
     resp = client.post(
-        f"/books/{book_id}/words",
+        f"/api/books/{book_id}/words",
         json={
             "word": "word1",
             "definition": "def1",
@@ -134,7 +134,7 @@ def test_sync_book_normalizes_practice_datetimes(
 
     now = datetime.now(timezone(timedelta(hours=9)))  # JST, +09:00
     resp = client.post(
-        f"/sync/{book_id}",
+        f"/api/sync/{book_id}",
         json={
             "practices": [
                 {

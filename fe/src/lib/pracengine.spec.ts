@@ -26,6 +26,10 @@ function makeStore(overrides: Partial<PracStoreLike> = {}): PracStoreLike {
     wordsNoPrac: [],
     pracDir: 'wd',
     lastSyncTime: null,
+    pracCounter: 0,
+    infoMem: 0,
+    infoTried: 0,
+    newWordsCap: 0,
     userId: 1,
     createWordsNoPrac: vi.fn(),
     syncServer: vi.fn(async () => true),
@@ -33,6 +37,71 @@ function makeStore(overrides: Partial<PracStoreLike> = {}): PracStoreLike {
     ...overrides,
   }
 }
+
+// ====== emulate local/sessionStorage =====================
+
+class LocalStorage {
+  kv: Record<string, string> = {}
+  constructor() {
+    return new Proxy(this, {
+      ownKeys(target) {
+        return Object.keys(target.kv)
+      },
+
+      getOwnPropertyDescriptor(target, prop) {
+        if (prop in target.kv) {
+          return { enumerable: true, configurable: true, value: target.kv[prop as string] }
+        }
+        return Reflect.getOwnPropertyDescriptor(target, prop)
+      }
+    })
+  }  
+  getItem(key: string) {
+    return this.kv[key] ?? null
+  }
+  setItem(key: string, value: string) {
+    this.kv[key] = value
+  }
+  removeItem(key: string) {
+    delete this.kv[key]
+  }
+  // keys() {
+  //   return Object.keys(this.kv)
+  // }
+}
+
+class SessionStorage {
+  kv: Record<string, string> = {}
+  constructor() {
+    return new Proxy(this, {
+      ownKeys(target) {
+        return Object.keys(target.kv)
+      },
+
+      getOwnPropertyDescriptor(target, prop) {
+        if (prop in target.kv) {
+          return { enumerable: true, configurable: true, value: target.kv[prop as string] }
+        }
+        return Reflect.getOwnPropertyDescriptor(target, prop)
+      }
+    })
+  }  
+  getItem(key: string) {
+    return this.kv[key] ?? null
+  }
+  setItem(key: string, value: string) {
+    this.kv[key] = value
+  }
+  removeItem(key: string) {
+    delete this.kv[key]
+  }
+}
+
+const mockLocalStorage = new LocalStorage
+const mockSessionStorage = new SessionStorage
+
+vi.stubGlobal('localStorage', mockLocalStorage)
+vi.stubGlobal('sessionStorage', mockSessionStorage)
 
 // ====== tests from here ==================================
 

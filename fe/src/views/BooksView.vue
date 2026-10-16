@@ -4,10 +4,11 @@ import { useBooksStore } from '@/stores/books'
 import type { components } from '@/types/api'
 import { SquarePen, Download, Upload, Search, Plus } from '@lucide/vue'
 import Navbar from '@/components/Navbar.vue'
-import ToastContainer from '@/components/ToastContainer.vue'
+//import ToastContainer from '@/components/ToastContainer.vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/utils'
 import { client } from '@/api/client'
+import { toastRef } from '@/lib/toast'
 
 type BookSchema = components['schemas']['BookSchema']
 
@@ -15,7 +16,7 @@ type BookSchema = components['schemas']['BookSchema']
 const booksStore = useBooksStore()
 const router = useRouter()
 const modalRef = ref<HTMLDialogElement | null>(null)
-const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
+//const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
 const selectedBook = ref<BookSchema | null>(null)
 const isNew = ref<boolean>(false)
 const bookName = ref<string>('')
@@ -81,7 +82,7 @@ const deleteBook = async () => {
 }
 
 async function exportAll() {
-  const { data, error, response } = await client.GET('/export')
+  const { data, error, response } = await client.GET('/api/export')
   if (error) {
     if ('message' in error) {
       toastRef.value?.showAlert(`Export failed: ${error.message} (${response.status})`, 'error')
@@ -121,7 +122,7 @@ async function importAll(event: Event) {
   } finally {
     target.value = ''
   }
-  const { error, response } = await client.POST('/import', {
+  const { error, response } = await client.POST('/api/import', {
     body: data,
   })
   if (error) {
@@ -191,9 +192,6 @@ onMounted(async () => {
     <li><div @click="triggerImport"><Upload />Import All</div></li>
     <div class="divider my-1"></div>
   </Navbar>
-
-  <ToastContainer ref="toastRef" />
-
 
   <div class="px-4 md:px-8 py-6 max-w-6xl mx-auto">
 

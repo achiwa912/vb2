@@ -5,15 +5,16 @@ import { SquarePen, SquareArrowRight, SquareArrowLeft, Upload } from '@lucide/vu
 import { useBooksStore } from '@/stores/books'
 import type { components } from '@/types/api'
 import Navbar from '@/components/Navbar.vue'
-import ToastContainer from '@/components/ToastContainer.vue'
+//import ToastContainer from '@/components/ToastContainer.vue'
 import { client } from '@/api/client'
+import { toastRef } from '@/lib/toast'
 
 type WordSchema = components['schemas']['WordSchema']
 type PracDir = components['schemas']['PracDir']
 type ImportCsvResp = components['schemas']['ImportCsvResp']
 
 //const alerts = ref([])
-const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
+//const toastRef = ref<InstanceType<typeof ToastContainer> | null>(null)
 const modalRef = ref<HTMLDialogElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const importModalRef = ref<HTMLDialogElement | null>(null)
@@ -167,10 +168,12 @@ onMounted(async () => {
   if (route.path.startsWith('/demo')) {
     return
   }
-  booksStore.words = []
-  booksStore.pracs = []
-  // await booksStore.fetchWords()
-  await booksStore.syncBook()
+  booksStore.syncPending()
+  // booksStore.words = []
+  // booksStore.pracs = []
+  if (await booksStore.syncBook()) {
+    booksStore.updateSnapshot()
+  }
 })
 
 // ====== import CSV =======================================
@@ -189,7 +192,7 @@ async function importCsv(event: Event) {
 
   if (!currentBook.value) return
   
-  const { data, error, response } = await client.POST(`/importcsv/{id}`, {
+  const { data, error, response } = await client.POST(`/api/importcsv/{id}`, {
     params: { path: { id: currentBook.value.id } },
     body: formData as unknown as { file: string },
   })
@@ -225,8 +228,6 @@ const closeImportModal = () => {
     </div>
   </Navbar>
 
-  <ToastContainer ref="toastRef" />
-  
   <div class="p-6">
     <div class="flex items-center">
       <h1 class="text-3xl font-semibold">{{ currentBook?.name }}</h1>

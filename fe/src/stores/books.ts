@@ -11,6 +11,13 @@ type PracticeSchema = components['schemas']['PracticeSchema']
 //type ListBooksResp = components['schemas']['ListBooksResp']
 type PracDir = components['schemas']['PracDir']
 
+export interface LogRecord {
+  prac: PracticeSchema
+  infoMem: number
+  infoTried: number
+  newWordsCap: number
+}
+
 export const useBooksStore = defineStore('books', () => {
   const books = ref<BookSchema[]>([])
   const words = ref<WordSchema[]>([])
@@ -19,6 +26,11 @@ export const useBooksStore = defineStore('books', () => {
   const pracDir = ref<PracDir | null>(null)  // was ("dw")
   const wordsNoPrac = ref<number[]>([])
   const lastSyncTime = ref<Date | null>(null)
+  const pracCounter = ref<number>(0)
+  const infoMem = ref<number>(0)
+  const infoTried = ref<number>(0)
+  const newWordsCap = ref<number>(20)
+  const loggingOut = ref<boolean>(false)
 
   const route = useRoute()
 
@@ -33,6 +45,9 @@ export const useBooksStore = defineStore('books', () => {
     pracDir.value = null
     wordsNoPrac.value = []
     lastSyncTime.value = null
+    infoMem.value = 0
+    infoTried.value = 0
+    newWordsCap.value = 20
   }
 
   function prepDemo() {
@@ -48,7 +63,7 @@ export const useBooksStore = defineStore('books', () => {
   }
   
   async function fetchBooks() {
-    const { data, error } = await client.GET('/books')
+    const { data, error } = await client.GET('/api/books')
     if (error) {
       return
     }
@@ -59,7 +74,7 @@ export const useBooksStore = defineStore('books', () => {
   async function fetchWords() {
     const id = activeBookId.value
     if (id === null) return
-    const { data, error } = await client.GET("/books/{id}/words", {
+    const { data, error } = await client.GET("/api/books/{id}/words", {
       params: { path: { id: id } },
     })
     if (error) {
@@ -74,7 +89,7 @@ export const useBooksStore = defineStore('books', () => {
     if (activeBookId.value === null) return true
     let data, error
     try {
-      const res = await client.POST('/sync/{id}', {
+      const res = await client.POST('/api/sync/{id}', {
 	params: { path: { id: activeBookId.value } },
 	body: { practices: pracs.value },
       })
@@ -101,7 +116,7 @@ export const useBooksStore = defineStore('books', () => {
   
   async function addBook(bookName: string | null): Promise<{ status: number, message: string }> {
     if (!bookName) return { status: 404, message: "Book not found" }
-    const { data, error } = await client.POST('/books', {
+    const { data, error } = await client.POST('/api/books', {
       body: { name: bookName },
     })
     if (error) return { status: 404, message: "Book not found" }
@@ -111,7 +126,7 @@ export const useBooksStore = defineStore('books', () => {
 
   async function editBook(bookName: string, book_id: number): Promise<{ status: number, message: string}> {
     if (!bookName) return { status: 404, message: "Book not found" }
-    const { data, error, response } = await client.PATCH('/books/{id}', {
+    const { data, error, response } = await client.PATCH('/api/books/{id}', {
       params: { path: { id: book_id }},
       body: { name: bookName },
     })
@@ -130,7 +145,7 @@ export const useBooksStore = defineStore('books', () => {
 
   async function deleteBook(book: BookSchema | null): Promise<{ status: number, message: string }> {
     if (!book) return { status: 404, message: "Book not found" }
-    const { error, response } = await client.DELETE('/books/{id}', {
+    const { error, response } = await client.DELETE('/api/books/{id}', {
       params: { path: { id: book.id }},
     })
     if (error) {
@@ -149,7 +164,7 @@ export const useBooksStore = defineStore('books', () => {
   async function addWord(word: string | null, definition: string, sample: string, book_id: number | null): Promise<{ status: number, message: string }> {
     if (!book_id) return { status: 404, message: "Book not found" }
     if (!word) return { status: 404, message: "Word not found" }
-    const { data, error, response } = await client.POST('/books/{id}/words', {
+    const { data, error, response } = await client.POST('/api/books/{id}/words', {
       params: { path: { id: book_id } },
       body: { word: word, definition: definition, sample: sample },
     })
@@ -166,7 +181,7 @@ export const useBooksStore = defineStore('books', () => {
 
   async function editWord(word: string | null, definition: string, sample: string, book_id: number, word_id: number): Promise<{ status: number, message: string}> {
     if (!word) return { status: 404, message: "Word not found" }
-    const { data, error, response } = await client.PATCH('/books/{bid}/words/{wid}', {
+    const { data, error, response } = await client.PATCH('/api/books/{bid}/words/{wid}', {
       params: { path: { bid: book_id, wid: word_id } },
       body: { word: word, definition: definition, sample: sample },
     })
@@ -185,7 +200,7 @@ export const useBooksStore = defineStore('books', () => {
 
   async function deleteWord(word: WordSchema | null): Promise<{ status: number, message: string}> {
     if (!word) return { status: 404, message: "Word not found" }
-    const { error, response } = await client.DELETE('/books/{bid}/words/{wid}', {
+    const { error, response } = await client.DELETE('/api/books/{bid}/words/{wid}', {
       params: { path: { bid: word.book_id, wid: word.id } },
     })
     if (error) {
@@ -272,6 +287,240 @@ export const useBooksStore = defineStore('books', () => {
     }
     return true
   }
+
+  function isDaysOrOlder(timestamp: Date | string | number, days: number): boolean {
+    const target = new Date(timestamp).getTime()
+
+    if (Number.isNaN(target)) {
+      throw new TypeError(`Invalid timestamp: ${timestamp}`)
+    }
+
+    return target <= Date.now() - days * 24 * 60 * 60 * 1000
+  }
+
+  interface SessionRecord {
+    id: string
+    updated: string  // ISO date string
+  }
+
+  interface SnapshotRecord {
+    userId: number
+    books: BookSchema[]
+    words: WordSchema[]
+    pracs: PracticeSchema[]
+    activeBookId: number | null
+    pracDir: PracDir | null
+    infoMem: number
+    infoTried: number
+    newWordsCap: number
+  }
+
+  // interface LogRecord {
+  //   prac: PracticeSchema
+  //   infoMem: number
+  //   infoTried: number
+  //   newWordsCap: number
+  // }
   
-  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer, userId, reset, prepDemo }
+  function expireOldSessions(sessions: SessionRecord[]): SessionRecord[] {
+    const expiredSessionIds = new Set()
+    const validSessions = sessions.filter((session: SessionRecord) => {
+      if (isDaysOrOlder(session.updated, 30)) {  // 30 days or older?
+	expiredSessionIds.add(session.id)
+	return false
+      }
+      return true
+    })
+    if (expiredSessionIds.size > 0) {
+      const KeysToRemove = []
+      for (let i=0; i< localStorage.length; i++) {
+	const key = localStorage.key(i)
+	if (key && Array.from(expiredSessionIds).some(id => key.startsWith(`vb2:${id}:`))) {
+	  KeysToRemove.push(key)  // remove both log and snapshot
+	}
+      }
+      KeysToRemove.forEach(key => localStorage.removeItem(key))
+    }
+    return validSessions
+  }
+
+  function updateSnapshot(sessionId?: string | null) {
+    if (!userId.value) return
+    if (!sessionId) {
+      sessionId = sessionStorage.getItem('vb2:sessionId')
+    }
+    const snapshot: SnapshotRecord = {
+      userId: userId.value,
+      books: books.value,
+      words: words.value,
+      pracs: pracs.value,
+      activeBookId: activeBookId.value,
+      pracDir: pracDir.value,
+      infoMem: infoMem.value,
+      infoTried: infoTried.value,
+      newWordsCap: newWordsCap.value,
+    }
+    localStorage.setItem(`vb2:${sessionId}:snapshot`, JSON.stringify(snapshot))
+  }
+  
+  function syncPending() {
+    //console.log('syncPending')
+    let sessionId = sessionStorage.getItem('vb2:sessionId')
+    if (sessionId) {
+      let cleanFlag = false
+      const raw = localStorage.getItem(`vb2:${sessionId}:snapshot`)
+      if (raw) {
+	const ss: SnapshotRecord = JSON.parse(raw)
+	if (userId.value && ss.userId !== userId.value) {
+	  cleanFlag = true
+	  console.log("userId don't match.  Cleaning.", userId.value, ss.userId)
+	}
+      }
+      // if different user, clean snapshot and logs
+      if (cleanFlag) {
+	localStorage.removeItem(`vb2:${sessionId}:snapshot`)
+	const toRemove = []
+	for (const key of Object.keys(localStorage)) {
+	  if (key.startsWith(`vb2:${sessionId}:log:`)) {
+	    toRemove.push(key)
+	  }
+	}
+	for (const key of toRemove) {
+	  localStorage.removeItem(key)
+	}
+	const existing = localStorage.getItem('vb2:sessions')
+	const sessions = existing ? JSON.parse(existing) : []
+	let i = 0
+	for (; i<sessions.length; i++) {
+	  if (sessions[i].id == sessionId) break
+	}
+	if (i <sessions.length) {
+	  sessions.splice(i, 1)
+	  localStorage.setItem('vb2:sessions', JSON.stringify(sessions))
+	}
+	sessionId = null
+      }
+    }
+    if (sessionId === null) {
+      sessionId = crypto.randomUUID()
+      sessionStorage.setItem('vb2:sessionId', sessionId)
+      pracCounter.value = 0
+      
+      // clean up old sessions
+      const existing = localStorage.getItem('vb2:sessions')
+      const sessions = existing ? JSON.parse(existing) : []
+      sessions.push({'id': sessionId, 'updated': new Date().toISOString()})
+
+      const validSessions = expireOldSessions(sessions)
+      localStorage.setItem('vb2:sessions', JSON.stringify(validSessions))
+
+      updateSnapshot(sessionId)
+      return
+    }
+    
+    // update localStorage timestamp & clean up old snapshot & log
+    //console.log('update snap timestamp')
+    const existing = localStorage.getItem('vb2:sessions')
+    const sessions = existing ? JSON.parse(existing) : []
+    let i = 0
+    for (; i<sessions.length; i++) {
+      if (sessions[i].id == sessionId) {
+	sessions[i].updated = new Date().toISOString()
+	break
+      }
+    }
+    // if (i==sessions.length) -> the session is not in the list. Do I care?
+    if (i==sessions.length) {
+      sessions.push({'id': sessionId, 'updated': new Date().toISOString()})
+    }
+    const validSessions = expireOldSessions(sessions)
+    localStorage.setItem('vb2:sessions', JSON.stringify(validSessions))
+
+    // replay log to snapshot (for the session)
+    //console.log('syncPending: replay start')
+    const logList: LogRecord[] = []
+    const toRemove = []
+    let maxCnt = -1
+    let _infoMem = 0
+    let _infoTried = 0
+    let _newWordsCap = 20
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith(`vb2:${sessionId}:log:`)) {
+	const cnt = Number(key.split(`vb2:${sessionId}:log:`)[1]) || 0
+	const raw = localStorage.getItem(key)
+	if (raw) {
+	  const record: LogRecord = JSON.parse(raw)
+	  if (record.prac.user_id !== userId.value) return  // just break?
+	  let i = 0
+	  for (; i<logList.length; i++) {
+	    const log = logList[i]
+	    if (log && log.prac.word_id == record.prac.word_id && log.prac.direction == record.prac.direction) {
+	      if (log.prac.last_edited < record.prac.last_edited) {
+		logList[i] = record
+		if (cnt > maxCnt) {
+		  maxCnt = cnt
+		  _infoMem = record.infoMem
+		  _infoTried = record.infoTried
+		  _newWordsCap = record.newWordsCap
+		}
+	      }
+	      break
+	    }
+	  }
+	  if (i == logList.length) {
+	    logList.push(record)
+	    if (cnt > maxCnt) {
+	      maxCnt = cnt
+	      _infoMem = record.infoMem
+	      _infoTried = record.infoTried
+	      _newWordsCap = record.newWordsCap
+	    }
+	  }
+	}
+	toRemove.push(key)
+      }
+    }
+    // do replay
+    const raw = localStorage.getItem(`vb2:${sessionId}:snapshot`)
+    if (!raw) return
+    const ss: SnapshotRecord = JSON.parse(raw)
+    const toAdd = []
+    for (const log of logList) {
+      let i = 0
+      for (; i<ss.pracs.length; i++) {
+	const prac = ss.pracs[i]
+	if (prac && prac.word_id == log.prac.word_id && prac.direction == log.prac.direction) {
+	  ss.pracs[i] = log.prac
+	  break
+	}
+      }
+      if (i == ss.pracs.length) {
+	toAdd.push(log.prac)
+      }
+    }
+    for (const prac of toAdd) {
+      ss.pracs.push(prac)
+    }
+    ss.infoMem = Math.max(ss.infoMem, _infoMem)
+    ss.infoTried = Math.max(ss.infoTried, _infoTried)
+    ss.newWordsCap = Math.min(ss.newWordsCap, _newWordsCap)
+    localStorage.setItem(`vb2:${sessionId}:snapshot`, JSON.stringify(ss))
+    if (books.value.length == 0) { // reload?
+      // restore from snapshot
+      books.value = ss.books
+      words.value = ss.words
+      pracs.value = ss.pracs  // this will go to server
+      activeBookId.value = ss.activeBookId
+      pracDir.value = ss.pracDir
+      infoMem.value = ss.infoMem
+      infoTried.value = ss.infoTried
+      newWordsCap.value = ss.newWordsCap
+    }
+    for (const key of toRemove) {
+      localStorage.removeItem(key)
+    }
+    pracCounter.value = 0
+  }
+  
+  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer, userId, reset, prepDemo, updateSnapshot, syncPending, pracCounter, infoMem, infoTried, newWordsCap, loggingOut }
 })

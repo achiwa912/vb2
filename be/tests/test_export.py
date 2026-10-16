@@ -50,7 +50,7 @@ def test_export_import_roundtrip_different_users(
         prac_id = prac.id
 
     # export
-    resp_exp = client.get("/export", headers=csrf_headers1)
+    resp_exp = client.get("/api/export", headers=csrf_headers1)
     assert resp_exp.status_code == 200
 
     adapter_b = TypeAdapter(list[BookSchema])
@@ -96,7 +96,7 @@ def test_export_import_roundtrip_different_users(
     export_data = ExportResp.model_validate(resp_exp.get_json())
     export_payload = export_data.model_dump(mode="json")
     resp_imp = client2.post(
-        "/import",
+        "/api/import",
         json=export_payload,
         headers=csrf_headers2,
     )
