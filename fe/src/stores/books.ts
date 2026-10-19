@@ -269,19 +269,15 @@ export const useBooksStore = defineStore('books', () => {
       console.log('syncServer - no activeBookId', activeBookId.value)
       return true  // no need for decrementing (or a bug)
     }
-    if (pracDir.value == 'wd') {
-      const lastp = books.value[bookIndex]?.wd_last_practiced
-      if (!isNextDayOrLater(lastp ? new Date(lastp) : null)) return true
-    } else {
-      const lastp = books.value[bookIndex]?.dw_last_practiced
-      if (!isNextDayOrLater(lastp ? new Date(lastp) : null)) return true
-    }
     for (const prac of pracs.value) {
       if (pracDir.value == prac.direction && prac.status == 'review') {
-	const oldCnt = prac.due_counter
-	prac.due_counter = Math.max((prac.due_counter ?? 0)-1, 0)
-	if (prac.due_counter != oldCnt) {
-	  prac.last_edited = new Date().toISOString()
+	const lastt = new Date(Math.max(new Date(prac.last_practiced || 0).getTime(), new Date(prac.last_edited).getTime()))
+	if (isNextDayOrLater(lastt)) {
+	  const oldCnt = prac.due_counter
+	  prac.due_counter = Math.max((prac.due_counter ?? 0)-1, 0)
+	  if (prac.due_counter != oldCnt) {
+	    prac.last_edited = new Date().toISOString()
+	  }
 	}
       }
     }

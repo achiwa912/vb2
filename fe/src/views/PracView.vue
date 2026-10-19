@@ -527,7 +527,7 @@ onUnmounted(() => {
       <div class="card-body py-3 sm:py-4">
 	<div class="grid grid-cols-3 gap-4">
 	  <div class="flex items-center gap-1"><Check />{{ infoMem }} <X />{{ infoTried - infoMem }}</div>
-	  <div>{{ booksStore.newWordsCap }} ({{ infoRemain }}) left</div>
+	  <div>{{ infoRemain }} ({{ booksStore.newWordsCap }}) left</div>
 	  <div>+{{ infoWithin3 }} soon</div>
 	</div>
       </div>

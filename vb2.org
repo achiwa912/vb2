@@ -1707,4 +1707,5 @@ src/views/PracView.vue:  await booksStore.syncServer()
 
 **** bug
 - /words conflicts with backend
-- time to migrate be api under /api
+- time to migrate be api under /api -> migrated
+

@@ -29,6 +29,7 @@ vb2 moves all interaction practice logic to the browser (Vue + JavaScript) and o
 ** Progress & persistence
 - Words and progress are stored in a database (sqlite3 w/ WAL mode)
 - Explicit (as well as automatic) /sync with server/ action to reconcile local and remote state
+- Use session/localStorage to restore practice state (snapshot + WAL-like log) after a browser reload
 - Export and import all words and progress to a local file
 
 ** Mobile-friendly UI
