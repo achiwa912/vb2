@@ -70,34 +70,36 @@ function goWords() {
         <div class="flex items-center gap-3 group">
 
           <!-- Logo -->
-	  <div class="relative w-12 h-8">
-	    <div @click="goHome"
-       class="w-12 h-8 bg-primary rounded-2xl hidden sm:flex items-center justify-center transition-all group-hover:rotate-12 cursor-pointer">
-	      <span class="text-white font-bold text-xl">vB</span>
-	    </div>
+          <div class="relative w-12 h-8 hidden sm:block">
+            <div @click="goHome"
+           class="w-12 h-8 bg-primary rounded-2xl flex items-center justify-center transition-all group-hover:rotate-12 cursor-pointer">
+              <span class="text-white font-bold text-xl">vB</span>
+            </div>
 
-	    <span v-if="route.path.startsWith('/demo')" class="absolute -top-3 -right-14 text-[18px] font-bold text-error bg-error/5 border border-error/60 px-1.5 py-0.5 rounded-full whitespace-nowrap italic">
-		  Demo mode
-	    </span>
-	  </div>
+            <span v-if="route.path.startsWith('/demo')" class="absolute -top-3 -right-14 text-[18px] font-bold text-error bg-error/5 border border-error/60 px-1.5 py-0.5 rounded-full whitespace-nowrap italic">
+              Demo mode
+            </span>
+          </div>
 
-	  <span @click="goHome" class="text-2xl font-semibold tracking-tight cursor-pointer">vocaBull</span>
+          <span @click="goHome" class="text-2xl font-semibold tracking-tight cursor-pointer">vocaBull</span>
+          
+          <span v-if="route.path.startsWith('/demo')" class="sm:hidden text-[12px] font-bold text-error bg-error/5 border border-error/60 px-1.5 py-0.5 rounded-full italic ml-2">
+            Demo
+          </span>
+      
+          <!-- Breadcrumbs -->
+          <div v-if="route.path.includes('/prac')" class="flex items-center text-sm mx-6">
+            <div>
+              <span class="text-base-content/30">></span>
+              <span @click="goWords" class="cursor-pointer ml-2">{{ activeBook?.name }}</span>
+            </div>
+          </div>
 
-	  
-	  <!-- Breadcrumbs -->
-	  <div v-if="route.path.includes('/prac')" class="flex items-center text-sm mx-6">
-	    <div>
-	      <span class="text-base-content/30">></span>
-	      <span @click="goWords" class="cursor-pointer ml-2">{{ activeBook?.name }}</span>
-	    </div>
-	  </div>
-
-	  <!-- Loading spinner -->
-	  <span v-if="booksStore.isLoading" class="loading loading-spinner loading-md mx-4"></span>
-	  
+          <!-- Loading spinner -->
+          <span v-if="booksStore.isLoading" class="loading loading-spinner loading-md mx-4"></span>
+      
         </div>
-	
-	
+    
         <!-- User Menu -->
         <div class="dropdown dropdown-end">
           <label 
@@ -151,4 +153,3 @@ function goWords() {
     </div>
   </nav>
 </template>
-
