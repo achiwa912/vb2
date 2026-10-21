@@ -31,7 +31,8 @@ export const useBooksStore = defineStore('books', () => {
   const infoTried = ref<number>(0)
   const newWordsCap = ref<number>(20)
   const loggingOut = ref<boolean>(false)
-
+  const isLoading = ref<boolean>(false)
+  
   const route = useRoute()
 
   const userStore = useUserStore()
@@ -74,9 +75,11 @@ export const useBooksStore = defineStore('books', () => {
   async function fetchWords() {
     const id = activeBookId.value
     if (id === null) return
+    isLoading.value = true
     const { data, error } = await client.GET("/api/books/{id}/words", {
       params: { path: { id: id } },
     })
+    isLoading.value = false
     if (error) {
       return
     }
@@ -88,6 +91,7 @@ export const useBooksStore = defineStore('books', () => {
     if (route.path.startsWith('/demo')) return true
     if (activeBookId.value === null) return true
     let data, error
+    isLoading.value = true
     try {
       const res = await client.POST('/api/sync/{id}', {
 	params: { path: { id: activeBookId.value } },
@@ -96,9 +100,11 @@ export const useBooksStore = defineStore('books', () => {
       data = res.data
       error = res.error
     } catch (err) {
+      isLoading.value = false
       console.log('syncBook - exception while sync with server', err)
       return false
     }
+    isLoading.value = false
     if (error) {
       console.log('syncBook - error sync with server', error)
       return false
@@ -116,9 +122,11 @@ export const useBooksStore = defineStore('books', () => {
   
   async function addBook(bookName: string | null): Promise<{ status: number, message: string }> {
     if (!bookName) return { status: 404, message: "Book not found" }
+    isLoading.value = true
     const { data, error } = await client.POST('/api/books', {
       body: { name: bookName },
     })
+    isLoading.value = false
     if (error) return { status: 404, message: "Book not found" }
     books.value.push(data.book)
     return { status: 200, message: "Added book"}
@@ -126,10 +134,12 @@ export const useBooksStore = defineStore('books', () => {
 
   async function editBook(bookName: string, book_id: number): Promise<{ status: number, message: string}> {
     if (!bookName) return { status: 404, message: "Book not found" }
+    isLoading.value = true
     const { data, error, response } = await client.PATCH('/api/books/{id}', {
       params: { path: { id: book_id }},
       body: { name: bookName },
     })
+    isLoading.value = false
     if (error) {
       if ('message' in error) {
 	return { status: response.status, message: error.message }
@@ -145,9 +155,11 @@ export const useBooksStore = defineStore('books', () => {
 
   async function deleteBook(book: BookSchema | null): Promise<{ status: number, message: string }> {
     if (!book) return { status: 404, message: "Book not found" }
+    isLoading.value = true
     const { error, response } = await client.DELETE('/api/books/{id}', {
       params: { path: { id: book.id }},
     })
+    isLoading.value = false
     if (error) {
       if ('message' in error) {
 	return { status: response.status, message: error.message }
@@ -164,10 +176,12 @@ export const useBooksStore = defineStore('books', () => {
   async function addWord(word: string | null, definition: string, sample: string, book_id: number | null): Promise<{ status: number, message: string }> {
     if (!book_id) return { status: 404, message: "Book not found" }
     if (!word) return { status: 404, message: "Word not found" }
+    isLoading.value = true
     const { data, error, response } = await client.POST('/api/books/{id}/words', {
       params: { path: { id: book_id } },
       body: { word: word, definition: definition, sample: sample },
     })
+    isLoading.value = false
     if (error) {
       if ('message' in error) {
 	return { status: response.status, message: error.message }
@@ -181,10 +195,12 @@ export const useBooksStore = defineStore('books', () => {
 
   async function editWord(word: string | null, definition: string, sample: string, book_id: number, word_id: number): Promise<{ status: number, message: string}> {
     if (!word) return { status: 404, message: "Word not found" }
+    isLoading.value = true
     const { data, error, response } = await client.PATCH('/api/books/{bid}/words/{wid}', {
       params: { path: { bid: book_id, wid: word_id } },
       body: { word: word, definition: definition, sample: sample },
     })
+    isLoading.value = false
     if (error) {
       if ('message' in error) {
 	return { status: response.status, message: error.message }
@@ -200,9 +216,11 @@ export const useBooksStore = defineStore('books', () => {
 
   async function deleteWord(word: WordSchema | null): Promise<{ status: number, message: string}> {
     if (!word) return { status: 404, message: "Word not found" }
+    isLoading.value = true
     const { error, response } = await client.DELETE('/api/books/{bid}/words/{wid}', {
       params: { path: { bid: word.book_id, wid: word.id } },
     })
+    isLoading.value = false
     if (error) {
       if ('message' in error) {
 	return { status: response.status, message: error.message }
@@ -518,5 +536,5 @@ export const useBooksStore = defineStore('books', () => {
     pracCounter.value = 0
   }
   
-  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer, userId, reset, prepDemo, updateSnapshot, syncPending, pracCounter, infoMem, infoTried, newWordsCap, loggingOut }
+  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer, userId, reset, prepDemo, updateSnapshot, syncPending, pracCounter, infoMem, infoTried, newWordsCap, loggingOut, isLoading }
 })

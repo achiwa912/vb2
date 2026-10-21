@@ -82,6 +82,7 @@ function goWords() {
 	  </div>
 
 	  <span @click="goHome" class="text-2xl font-semibold tracking-tight cursor-pointer">vocaBull</span>
+
 	  
 	  <!-- Breadcrumbs -->
 	  <div v-if="route.path.includes('/prac')" class="flex items-center text-sm mx-6">
@@ -90,9 +91,11 @@ function goWords() {
 	      <span @click="goWords" class="cursor-pointer ml-2">{{ activeBook?.name }}</span>
 	    </div>
 	  </div>
-	
-        </div>
 
+	  <!-- Loading spinner -->
+	  <span v-if="booksStore.isLoading" class="loading loading-spinner loading-md mx-4"></span>
+	  
+        </div>
 	
 	
         <!-- User Menu -->
@@ -148,3 +151,4 @@ function goWords() {
     </div>
   </nav>
 </template>
+

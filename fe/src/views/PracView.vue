@@ -41,12 +41,14 @@ const infoTried = computed(() => booksStore.infoTried)
 const infoRemain = computed(() => engine.getInfoRemain())
 const infoWithin3 = computed(() => engine.getInfoWithin3())
 
-const currentWord = computed(() => {
-  if (engine.pracIdx == null) return null
-  const prac = booksStore.pracs[engine.pracIdx]
-  if (!prac || prac.word_id == null) return null
+const sessionRemain = computed(() => Math.min(booksStore.newWordsCap, infoRemain.value))
 
-  const idx = booksStore.id2ixWord(prac.word_id)
+  const currentWord = computed(() => {
+    if (engine.pracIdx == null) return null
+    const prac = booksStore.pracs[engine.pracIdx]
+    if (!prac || prac.word_id == null) return null
+
+    const idx = booksStore.id2ixWord(prac.word_id)
   if (idx == null) return null
 
   return booksStore.words[idx] ?? null
@@ -343,7 +345,7 @@ onBeforeRouteLeave(async () => {
   engine.isFlipped = false
   const success = await booksStore.syncServer()
   if (!success) {
-    toastRef.value?.showAlert("Failed to sync with server.  Don't leave practice view until network is available.  Don't close the tab or reload.", 'error')
+    toastRef.value?.showAlert("Failed to sync with server.  Don't leave practice view until network is available.  Don't close the tab or browser.", 'error')
     return false
   }
 })
@@ -527,7 +529,7 @@ onUnmounted(() => {
       <div class="card-body py-3 sm:py-4">
 	<div class="grid grid-cols-3 gap-4">
 	  <div class="flex items-center gap-1"><Check />{{ infoMem }} <X />{{ infoTried - infoMem }}</div>
-	  <div>{{ infoRemain }} ({{ booksStore.newWordsCap }}) left</div>
+	  <div>{{ infoRemain }} ({{ sessionRemain }}) left</div>
 	  <div>+{{ infoWithin3 }} soon</div>
 	</div>
       </div>
