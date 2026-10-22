@@ -64,7 +64,9 @@ export const useBooksStore = defineStore('books', () => {
   }
   
   async function fetchBooks() {
+    isLoading.value = true
     const { data, error } = await client.GET('/api/books')
+    isLoading.value = false
     if (error) {
       return
     }

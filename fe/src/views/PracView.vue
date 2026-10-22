@@ -43,12 +43,12 @@ const infoWithin3 = computed(() => engine.getInfoWithin3())
 
 const sessionRemain = computed(() => Math.min(booksStore.newWordsCap, infoRemain.value))
 
-  const currentWord = computed(() => {
-    if (engine.pracIdx == null) return null
-    const prac = booksStore.pracs[engine.pracIdx]
-    if (!prac || prac.word_id == null) return null
+const currentWord = computed(() => {
+  if (engine.pracIdx == null) return null
+  const prac = booksStore.pracs[engine.pracIdx]
+  if (!prac || prac.word_id == null) return null
 
-    const idx = booksStore.id2ixWord(prac.word_id)
+  const idx = booksStore.id2ixWord(prac.word_id)
   if (idx == null) return null
 
   return booksStore.words[idx] ?? null
@@ -352,23 +352,21 @@ onBeforeRouteLeave(async () => {
 
 //====== keyboard shortcuts ================================
 
-const TIMEOUT_MS = 10_000
-const helpOpen = ref(false)
-let timer: ReturnType<typeof setTimeout> | undefined
+import { useKeyboardShortcuts } from '@/lib/keyshorts'
 
 type Action = 'okay' | 'onceMore' | 'memorized' | 'flip' | 'playFront' | 'playRest' | 'toggleAutoplay' | 'escape' | 'undo' | 'help'
 
 const shortcuts = [
-  { keys: ['h', '\u2190'],       label: 'Once more' },
-  { keys: ['j', '\u2193'],       label: 'Memorized' },
-  { keys: ['k', '\u2191', '\u2423'],  label: 'Flip' },
-  { keys: ['l', '\u2192'],       label: 'Okay' },
-  { keys: ['n'],            label: 'Play front' },
-  { keys: ['m'],            label: 'Play rest' },
-  { keys: ['A'],            label: 'Autoplay' },
-  { keys: ['Esc'],          label: 'Leave session' },
-  { keys: ['U'],            label: 'Undo' },
-  { keys: ['?'],            label: 'Help' },
+    { keys: ['h', '\u2190'],       label: 'Once more' },
+    { keys: ['j', '\u2193'],       label: 'Memorized' },
+    { keys: ['k', '\u2191', '\u2423'],  label: 'Flip' },
+    { keys: ['l', '\u2192'],       label: 'Okay' },
+    { keys: ['n'],            label: 'Play front' },
+    { keys: ['m'],            label: 'Play rest' },
+    { keys: ['A'],            label: 'Autoplay' },
+    { keys: ['Esc'],          label: 'Leave session' },
+    { keys: ['U'],            label: 'Undo' },
+    { keys: ['?'],            label: 'Help' },
 ]
 
 function resolveAction(event: KeyboardEvent): Action | null {
@@ -404,75 +402,29 @@ function resolveAction(event: KeyboardEvent): Action | null {
 }
 
 const handlers: Partial<Record<Action, () => void>> = {
-      'onceMore': () => engine.onceMore(),
-      'memorized': () => engine.memorized(),
-      'flip': () => flipCard(),
-      'okay': () => engine.okay(),
-      'playFront': () => speakFront(),
-      'playRest': () => { if (engine.isFlipped ) speakRest() },
-      'toggleAutoplay': () => {
+  'onceMore': () => engine.onceMore(),
+  'memorized': () => engine.memorized(),
+  'flip': () => flipCard(),
+  'okay': () => engine.okay(),
+  'playFront': () => speakFront(),
+  'playRest': () => { if (engine.isFlipped ) speakRest() },
+  'toggleAutoplay': () => {
     isAutoplay.value = !isAutoplay.value
   },
-      'escape': () => {
+  'escape': () => {
     if (route.path == '/demo/prac') {
       router.push('/demo')
     } else {
       router.push('/words')
     }
   },
-      'undo': () => engine.undo(),
-      'help': () => showHelp(),  
+  'undo': () => engine.undo(),
+  //'help': () => keyShorts.showHelp(),  
 }
 
-const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
-const SCROLL_KEYS = new Set([' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'])
+const { helpOpen, showHelp } = useKeyboardShortcuts(resolveAction, handlers, { isModalOpen: () => !!modalRef.value?.open, })
 
-function isEditable(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  return target.isContentEditable || EDITABLE_TAGS.has(target.tagName)
-}
-
-function handleKeyDown(e: KeyboardEvent) {
-  //console.log(e.key)
-
-  if (e.ctrlKey || e.metaKey || e.altKey) return
-  if (e.repeat) return
-
-  if (helpOpen.value) {
-    hideHelp()
-    if (e.key === 'Escape') return
-  }
-  
-  if (modalRef.value?.open) return
-  // do I want to check navbar menu open here???
-
-  const action = resolveAction(e)
-  if (!action) return
-
-  if (action !== 'escape' && isEditable(e.target)) return
-  if (SCROLL_KEYS.has(e.key)) e.preventDefault()  
-  
-  handlers[action]?.()
-}
-
-function clearTimer() {
-  if (timer !== undefined) { clearTimeout(timer); timer = undefined }
-}
-
-function showHelp() {
-  helpOpen.value = true
-  clearTimer()
-  timer = setTimeout(() => { helpOpen.value = false; timer = undefined }, TIMEOUT_MS)
-}
-
-function hideHelp() {
-  helpOpen.value = false
-  clearTimer()
-}
-
-function dismissHelpOnPointerDown() {
-  if (helpOpen.value) hideHelp()
-}
+handlers.help = () => showHelp()
 
 onMounted(async () => {
   booksStore.syncPending()
@@ -490,18 +442,11 @@ onMounted(async () => {
   if (unmounted) return
   engine.doPrac()
   if (unmounted) return
-
-  window.addEventListener('pointerdown', dismissHelpOnPointerDown)
-  window.addEventListener("keydown", handleKeyDown)
 })
 
 onUnmounted(() => {
   unmounted = true
-  clearTimer()
-  window.removeEventListener('keydown', handleKeyDown)
-  window.removeEventListener('pointerdown', dismissHelpOnPointerDown)
   mq?.removeEventListener('change', onMqChange)
-  window.removeEventListener('keydown', handleKeyDown)
 })
 
 

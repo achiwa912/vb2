@@ -164,17 +164,48 @@ function practice(dir: PracDir | null) {
   }
 }
 
-onMounted(async () => {
-  if (route.path.startsWith('/demo')) {
-    return
+//====== keyboard shortcuts ================================
+
+import { useKeyboardShortcuts } from '@/lib/keyshorts'
+
+type Action = 'pracWd' | 'pracDw' | 'escape' | 'help'
+
+const shortcuts = [
+  { keys: ['w'],            label: 'Word to definition' },
+  { keys: ['d'],            label: 'Definition to word' },
+  { keys: ['Esc'],          label: 'Back to books' },
+  { keys: ['?'],            label: 'Help' },
+]
+
+function resolveAction(event: KeyboardEvent): Action | null {
+  switch (event.key) {
+    case 'w':
+      return 'pracWd'
+    case 'd':
+      return 'pracDw'
+    case 'Escape':
+      return 'escape'
+    case '?':
+      return 'help'
+    default:
+      return null
   }
-  booksStore.syncPending()
-  // booksStore.words = []
-  // booksStore.pracs = []
-  if (await booksStore.syncBook()) {
-    booksStore.updateSnapshot()
-  }
-})
+}
+
+const handlers: Partial<Record<Action, () => void>> = {
+  'pracWd': () => practice('wd'),
+  'pracDw': () => practice('dw'),
+  'escape': () => {
+    if (route.path !== '/demo') {
+      router.push('/')
+    }
+  },
+}
+
+const { helpOpen, showHelp } = useKeyboardShortcuts(resolveAction, handlers, { isModalOpen: () => !!modalRef.value?.open, })
+
+handlers.help = () => showHelp()
+
 
 // ====== import CSV =======================================
 
@@ -216,6 +247,19 @@ const openImportModal = () => {
 const closeImportModal = () => {
   importModalRef.value?.close()
 }
+
+
+onMounted(async () => {
+  if (route.path.startsWith('/demo')) {
+    return
+  }
+  booksStore.syncPending()
+  // booksStore.words = []
+  // booksStore.pracs = []
+  if (await booksStore.syncBook()) {
+    booksStore.updateSnapshot()
+  }
+})
 
 </script>
 
@@ -328,6 +372,21 @@ const closeImportModal = () => {
 
   </div>
 
+  <!-- keyboard shortcut help -->
+  <Transition name="help">
+    <div v-if="helpOpen" class="fixed left-1/2 bottom-8 z-40 w-[min(720px,calc(100vw-32px))] -translate-x-1/2 bg-base-100 text-base-content border border-base-300 rounded-2xl px-[18px] py-3 shadow-md backdrop-blur-md pointer-events-none leading-[0.8]" role="status" aria-live="polite">
+      <div class="flex flex-wrap justify-center gap-x-[18px] gap-y-2">
+	<div v-for="s in shortcuts" :key="s.label" class="flex items-center gap-1.5">
+          <span class="inline-flex gap-0.5">
+	    <kbd v-for="k in s.keys" :key="k" class="kbd min-w-[1.4em] rounded-[5px] border border-base-content/20 border-b-2 bg-base-content/10 px-1.5 py-0.5 text-center text-sm font-normal">{{ k }}</kbd>
+	  </span>
+          <span class="opacity-75">{{ s.label }}</span>
+	</div>
+      </div>
+    </div>
+  </Transition>
+
+  
   <!-- word add/edit modal -->
   <dialog ref="modalRef" class="modal modal-bottom sm:modal-middle backdrop:backdrop-blur-sm transition-all duration-300">
     <div class="modal-box p-6 max-w-lg rounded-2xl border border-base-200/60 shadow-xl bg-base-100/95 backdrop-blur-md">

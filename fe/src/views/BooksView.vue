@@ -82,7 +82,9 @@ const deleteBook = async () => {
 }
 
 async function exportAll() {
+  booksStore.isLoading = true
   const { data, error, response } = await client.GET('/api/export')
+  booksStore.isLoading = false
   if (error) {
     if ('message' in error) {
       toastRef.value?.showAlert(`Export failed: ${error.message} (${response.status})`, 'error')
@@ -122,9 +124,11 @@ async function importAll(event: Event) {
   } finally {
     target.value = ''
   }
+  booksStore.isLoading = true
   const { error, response } = await client.POST('/api/import', {
     body: data,
   })
+  booksStore.isLoading = false
   if (error) {
     if ('message' in error) {
       toastRef.value?.showAlert(`Import failed: ${error.message} (${response.status})`, 'error')
@@ -172,6 +176,8 @@ const visibleBooks = computed(() => {
   return sorted
 })
 
+
+
 const isSearching = computed(() => searchQuery.value.trim().length > 0)
 
 
@@ -183,6 +189,48 @@ onMounted(async () => {
   booksStore.pracs = []
   await booksStore.fetchBooks()
 })
+
+//====== keyboard shortcuts ================================
+
+function openBook(num: number) {
+  const books = visibleBooks.value
+  if (books.length < num) return
+  const bid = books[num-1]?.id
+  if (!bid) return
+  wordsView(bid)
+}
+
+import { useKeyboardShortcuts } from '@/lib/keyshorts'
+
+type Action = 'help' | `open${1|2|3|4|5|6|7|8|9}`
+
+const shortcuts = [
+  { keys: ['1-9'],          label: 'Open n-th book in list' },
+  { keys: ['?'],            label: 'Help' },
+]
+
+function resolveAction(event: KeyboardEvent): Action | null {
+  if (event.key >= '1' && event.key <= '9') {
+    return `open${event.key}` as Action
+  }
+  switch (event.key) {
+    case '?':
+      return 'help'
+    default:
+      return null
+  }
+}
+
+const handlers: Partial<Record<Action, () => void>> = {}
+
+for (let i = 1; i <= 9; i++) {
+  handlers[`open${i}` as Action] = () => openBook(i)
+}
+
+const { helpOpen, showHelp } = useKeyboardShortcuts(resolveAction, handlers, { isModalOpen: () => !!modalRef.value?.open, })
+
+handlers.help = () => showHelp()
+
 </script>
 
 <template>
@@ -344,6 +392,21 @@ onMounted(async () => {
     </template>
   </div>
 
+
+  <!-- keyboard shortcut help -->
+  <Transition name="help">
+    <div v-if="helpOpen" class="fixed left-1/2 bottom-8 z-40 w-[min(720px,calc(100vw-32px))] -translate-x-1/2 bg-base-100 text-base-content border border-base-300 rounded-2xl px-[18px] py-3 shadow-md backdrop-blur-md pointer-events-none leading-[0.8]" role="status" aria-live="polite">
+      <div class="flex flex-wrap justify-center gap-x-[18px] gap-y-2">
+	<div v-for="s in shortcuts" :key="s.label" class="flex items-center gap-1.5">
+          <span class="inline-flex gap-0.5">
+	    <kbd v-for="k in s.keys" :key="k" class="kbd min-w-[1.4em] rounded-[5px] border border-base-content/20 border-b-2 bg-base-content/10 px-1.5 py-0.5 text-center text-sm font-normal">{{ k }}</kbd>
+	  </span>
+          <span class="opacity-75">{{ s.label }}</span>
+	</div>
+      </div>
+    </div>
+  </Transition>
+  
   <!-- add/edit book modal -->
   <dialog ref="modalRef" class="modal modal-bottom sm:modal-middle backdrop:backdrop-blur-sm transition-all duration-300">
     <div class="modal-box p-6 max-w-lg rounded-2xl border border-base-200/60 shadow-xl bg-base-100/96 backdrop-blur-md">
