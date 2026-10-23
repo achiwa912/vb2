@@ -266,7 +266,7 @@ onMounted(async () => {
 <template>
   <Navbar>
     <div v-if="!route.path.startsWith('/demo')">
-      <input ref="fileInputRef" type="file" accept=".csv,application/csv" class="hidden-input" @change="importCsv" />
+      <input ref="fileInputRef" type="file" accept=".csv, .tsv, text/csv, text/tab-separated-values" class="hidden-input" @change="importCsv" />
       <li><div @click="triggerImport"><Upload />Import CSV</div></li>
       <div class="divider my-1"></div>
     </div>

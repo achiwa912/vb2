@@ -1,0 +1,109 @@
+perspicacious	showing a smart, clear mind	His code spotted bugs instantly.
+obfuscate	to make something hard to understand	Bad naming obfuscates program logic.
+recalcitrant	hard to control or manage	That recalcitrant server crashed again.
+taciturn	quiet and speaking very little	The senior developer was taciturn.
+sagacious	showing very wise judgment	Her architecture choice was sagacious.
+quixotic	hopelessly idealistic and impractical	Building a custom OS alone is quixotic.
+alacrity	cheerful and quick readiness	She answered the pager with alacrity.
+fastidious	very careful about tiny details	His fastidious review caught every typo.
+pusillanimous	showing a lack of courage	That pusillanimous dev avoided hard bugs.
+gargantuan	extraordinarily huge in size	The log file grew gargantuan overnight.
+truculent	eager or quick to argue	He gave a truculent reply in Slack.
+pernicious	having a very bad hidden effect	That memory leak is pernicious.
+ebullient	cheerful and full of energy	The team felt ebullient after shipping.
+surreptitious	kept secret because it is bad	He made a surreptitious hotfix.
+lugubrious	looking very sad and gloomy	The crashed database looked lugubrious.
+munificent	very generous with money or help	The open-source sponsor was munificent.
+mendacious	not telling the truth or lying	That error message was mendacious.
+sycophant	a person who praises people for gain	He acted like a sycophant to the lead.
+perfunctory	done without care or interest	He did a perfunctory code review.
+vicissitude	a change of luck or fortune	They survived the vicissitudes of server loads.
+panacea	a solution for all problems	No silver bullet is a panacea.
+iconoclast	a person who attacks old beliefs	The architect was an iconoclast.
+peccadillo	a small, unimportant sin or fault	A missing semicolon is a minor peccadillo.
+equanimity	calmness in a difficult time	She kept her equanimity during the outage.
+loquacious	tending to talk a great deal	The junior dev was very loquacious.
+vitriolic	filled with bitter criticism	The code review comments were vitriolic.
+invidious	likely to arouse resentment or anger	Comparing developers creates invidious rivalry.
+macabre	disturbing and horrifying due to death	Debugging old legacy code feels macabre.
+mercurial	subject to sudden unpredictable changes	The cloud latency was mercurial.
+nadir	the lowest point of something	System performance hit its absolute nadir.
+obdurate	stubbornly refusing to change opinion	The legacy system is obdurate.
+palpable	so intense as to be almost touched	The tension in the war room was palpable.
+quagmire	a soft boggy area or a complex situation	Legacy codebases become a deep quagmire.
+rancor	bitterness or resentfulness	There was no rancor after the code review.
+salubrious	health-giving and healthy	Fresh air helps during long coding sessions.
+temerity	excessive confidence or boldness	He had the temerity to push to main.
+ubiquitous	present, appearing everywhere	JSON is ubiquitous in modern APIs.
+vacillate	to waver between different opinions	Do not vacillate on architecture choices.
+wanton	deliberate and unprovoked	Deleting the database was a wanton act.
+zealot	a person who is fanatical	He is a strict indentation zealot.
+anachronism	a thing belonging to a different time	Floppy disks are anachronisms now.
+bellicose	demonstrating aggression and willingness to fight	The server logs looked bellicose.
+cacophony	a harsh mixture of loud sounds	The fan made a loud cacophony.
+deleterious	causing harm or damage	A memory leak is deleterious to uptime.
+effrontery	insolent or impertinent behavior	He had the effrontery to skip testing.
+facetious	treating serious issues with humor	His bug report comment was facetious.
+garrulous	excessively talkative, especially about trivia	The junior dev was garrulous in meetings.
+hedonist	someone who pursues pleasure above all	He is a hardware hedonist.
+ignominious	deserving or causing public disgrace	The deployment failure was ignominious.
+jejune	naive, simplistic, and superficial	The first prototype design was jejune.
+antithesis	the direct opposite of something	Spaghetti code is the antithesis of clean architecture.
+boondoggle	a wasteful or pointless project	The rewritten rewrite became a boondoggle.
+capitulate	to surrender or give in	The server capitulated under traffic.
+dearth	a scarce or insufficient supply	There was a dearth of useful documentation.
+ephemeral	lasting for a very short time	Container instances are short and ephemeral.
+filibuster	to prolong or block an action	Endless debate filibustered the release.
+gainsay	to deny or contradict something	None could gainsay her benchmark results.
+hegemony	leadership or dominance by one group	That OS maintains its market hegemony.
+imprecation	a spoken curse or bad wish	He muttered an imprecation at the compiler.
+juxtapose	to place side by side to compare	Juxtapose old logs with new logs.
+kowtow	to act in a subservient manner	Never kowtow to poor design choices.
+laconic	using very few words	His laconic commit message said fixed.
+magnanimous	very generous or forgiving	The maintainer was magnanimous with feedback.
+nefarious	wicked or criminal in nature	A nefarious script compromised the server.
+ostentatious	designed to impress or attract attention	Avoid ostentatious abstractions in code.
+parsimonious	unwilling to spend money or resources	The startup was parsimonious with RAM allocation.
+reprobate	an unprincipled or wicked person	The rogue hacker was a true reprobate.
+sanguine	optimistic in a difficult situation	She remained sanguine about launch dates.
+trenchant	vigorous or incisive in expression	His trenchant code review saved the sprint.
+umbrage	offense or annoyance	He took umbrage at the refactoring pull request.
+veracity	conformity to facts or truth	We questioned the veracity of the test results.
+wiliness	shrewdness and clever trickery	His wiliness bypassed the network firewall.
+xenophobia	dislike or prejudice against strangers	Avoid tech xenophobia toward new languages.
+yoke	a burden or joining force	Legacy systems can be a heavy yoke.
+abstruse	difficult to understand or obscure	The math behind the encryption was abstruse.
+bombastic	high-sounding but with little meaning	His bombastic presentation lacked real metrics.
+chicanery	the use of trickery to achieve a purpose	The vendor used sales chicanery.
+diatribe	a bitter verbal attack	He posted a long diatribe on Slack.
+enervate	to cause someone to feel drained	Debugging all night will enervate you.
+frenetic	fast and energetic in a wild way	The release day had a frenetic pace.
+grandiloquent	pompous or extravagant in language	His grandiloquent comments confused the team.
+harangue	a lengthy and aggressive speech	The tech lead delivered a long harangue.
+intransigent	uncompromising or refusing to change	The client was intransigent on deadlines.
+judicious	having or showing good sense	A judicious choice of database prevented latency.
+knell	a sound announcing death or end	That crash was the knell for legacy code.
+limpid	completely clear and transparent	Write limpid functions that explain themselves.
+malediction	a curse or bad spell	The corrupted drive felt like a malediction.
+neophyte	a person who is new to a subject	The neophyte developer learned quickly.
+obsequious	obedient or attentive to a servile degree	His obsequious replies annoyed the lead.
+pithy	concise and forcefully expressive	She wrote a pithy error message.
+quiescent	in a state of inactivity or rest	The thread stayed quiescent until invoked.
+recondite	little known or obscure subject	Quantum computing uses recondite theory.
+spurious	not genuine or valid	The test threw a spurious failure.
+turbid	cloudy, confused, or obscure	The turbid logs made tracking difficult.
+unctuous	excessively flattering or oily	His unctuous tone failed to convince us.
+variegated	exhibiting different colors or forms	The cluster has a variegated hardware setup.
+wily	skilled at gaining advantage by deceit	A wily attacker bypassed authentication.
+yore	time long past	Monolithic builds belong to days of yore.
+zenith	the time at which something is most powerful	The system hit its zenith in speed.
+cogent	clear, logical, and convincing	She offered a cogent argument for microservices.
+dilatory	slow to act or delaying	The dilatory build pipeline frustrated developers.
+insidious	proceeding in a subtle but harmful way	A silent buffer overflow is insidious.
+prolix	using or containing too many words	The API spec was overly prolix.
+truculence	eager or quick to argue or fight	His truculence alienated fellow maintainers.
+ineffable	too great or extreme to be expressed in words	The elegant refactor gave ineffable joy.
+crepuscular	resembling or relating to twilight	The monitor emitted a dim, crepuscular light.
+inveterate	having a long-established habit	He is an inveterate refactorer.
+penury	extreme poverty or destitution	The open-source project suffered from resource penury.
+inexorable	impossible to stop or prevent	The march toward tech debt was inexorable.

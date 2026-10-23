@@ -2,6 +2,7 @@ import csv
 import io
 import os
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import jsonify, request
@@ -281,8 +282,8 @@ def delete_book(path: BookPath):
     ).scalar_one_or_none()
     if not b:
         return {"message": "Book not found"}, 404
-    if b.words:
-        return {"message": "Book not empty"}, 400
+    # if b.words:
+    # return {"message": "Book not empty"}, 400
     db.session.delete(b)
     db.session.commit()
     return {"message": f"Deleted book id={path.id}"}, 200
@@ -315,17 +316,14 @@ def list_book_words(path: BookPath) -> tuple[dict[str, str], int]:
 @jwt_required()
 def import_csv(path: BookPath, form: ImportCsvReq):
     user_id = int(get_jwt_identity())
+    new_book = False
     book = db.session.execute(
         select(Book).where(Book.user_id == user_id, Book.id == path.id)
     ).scalar_one_or_none()
     if not book:
-        return {"message": "Book not found"}, 404
-    word_count = (
-        db.session.scalar(
-            select(func.count()).select_from(Word).where(Word.book_id == path.id)
-        )
-        or 0
-    )
+        new_book = True
+        # return {"message": "Book not found"}, 404
+
     file = request.files["file"]
     if request.content_length and request.content_length >= 1048576:  # 1MB
         return {"message": "File too big"}, 413
@@ -338,6 +336,25 @@ def import_csv(path: BookPath, form: ImportCsvReq):
 
     stream = io.StringIO(text_data)
     reader = csv.reader(stream, dialect=dialect)
+
+    if new_book:
+        filename = file.filename if file.filename else "New_File"
+        filename = Path(filename).stem
+        book = db.session.execute(
+            select(Book).where(Book.name == filename, Book.user_id == user_id)
+        ).scalar_one_or_none()
+        if not book:
+            book = Book(name=filename, user_id=user_id)
+            db.session.add(book)
+            db.session.commit()
+
+    assert book is not None
+    word_count = (
+        db.session.scalar(
+            select(func.count()).select_from(Word).where(Word.book_id == book.id)
+        )
+        or 0
+    )
 
     errors = []
     added = skipped = failed = 0
@@ -357,7 +374,7 @@ def import_csv(path: BookPath, form: ImportCsvReq):
 
         word = db.session.execute(
             select(Word).where(
-                Word.book_id == path.id, func.lower(Word.word) == rw_lower
+                Word.book_id == book.id, func.lower(Word.word) == rw_lower
             )
         ).scalar_one_or_none()
         if word:
@@ -370,7 +387,7 @@ def import_csv(path: BookPath, form: ImportCsvReq):
             word=rw[:64],
             definition=row[1][:256],
             sample=row[2][:256] if len(row) > 2 else "",
-            book_id=path.id,
+            book_id=book.id,
         )
         db.session.add(w)
     db.session.commit()

@@ -11,7 +11,7 @@ import { client } from '@/api/client'
 import { toastRef } from '@/lib/toast'
 
 type BookSchema = components['schemas']['BookSchema']
-
+type ImportCsvResp = components['schemas']['ImportCsvResp']
 
 const booksStore = useBooksStore()
 const router = useRouter()
@@ -21,6 +21,9 @@ const selectedBook = ref<BookSchema | null>(null)
 const isNew = ref<boolean>(false)
 const bookName = ref<string>('')
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const fileInputRef2 = ref<HTMLInputElement | null>(null)
+const importModalRef = ref<HTMLDialogElement | null>(null)
+const importResults = ref<ImportCsvResp | null>(null)
 
 const searchQuery = ref('')
 type SortKey = 'recent' | 'name' | 'edited'
@@ -107,6 +110,46 @@ async function exportAll() {
 
 function triggerImport() {
   fileInputRef.value?.click()
+}
+
+function triggerImportCsv() {
+  fileInputRef2.value?.click()
+}
+
+async function importCsv(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  const formData = new FormData()
+  if (!file) return
+  formData.append('file', file)
+  target.value = ''
+
+  // if (!currentBook.value) return
+  
+  const { data, error, response } = await client.POST(`/api/importcsv/{id}`, {
+    params: { path: { id: 9999999 } },
+    body: formData as unknown as { file: string },
+  })
+  if (error) {
+    if ('message' in error) {
+      toastRef.value?.showAlert(`Import failed: ${error.message} (${response.status})`, 'error')
+    } else {
+      toastRef.value?.showAlert(`Import failed: unknown error (${response.status})`, 'error')
+    }
+  } else {
+    toastRef.value?.showAlert(`Successfuly imported`, 'success')
+    importResults.value = data as unknown as ImportCsvResp
+    await booksStore.fetchBooks()
+    openImportModal()
+  }
+}
+
+const openImportModal = () => {
+  importModalRef.value?.showModal()
+}
+
+const closeImportModal = () => {
+  importModalRef.value?.close()
 }
 
 async function importAll(event: Event) {
@@ -235,6 +278,8 @@ handlers.help = () => showHelp()
 
 <template>
   <Navbar>
+    <input ref="fileInputRef2" type="file" accept=".csv, .tsv, text/csv, text/tab-separated-values" class="hidden-input" @change="importCsv" />
+    <li><div @click="triggerImportCsv"><Upload />Import CSV</div></li>
     <input ref="fileInputRef" type="file" accept=".json,application/json" class="hidden-input" @change="importAll" />
     <li><div @click="exportAll"><Download />Export All</div></li>
     <li><div @click="triggerImport"><Upload />Import All</div></li>
@@ -445,6 +490,56 @@ handlers.help = () => showHelp()
       <button @click="closeModal">close</button>
     </form>
   </dialog>
+
+  <!-- import result modal -->
+  <dialog ref="importModalRef" class="modal modal-bottom sm:modal-middle backdrop:backdrop-blur-sm" >
+    <div class="modal-box max-w-lg rounded-3xl border border-base-200/60 bg-base-100/95 p-6 shadow-2xl backdrop-blur-md" >
+      <!-- Header -->
+      <div class="mb-6 flex items-center justify-between">
+	<div> <div class="mb-1 text-xs font-semibold uppercase tracking-widest text-primary"> Import complete </div>
+	  <h3 class="text-2xl font-bold tracking-tight"> CSV Import Result </h3>
+	</div>
+	<button type="button" class="btn btn-sm btn-circle btn-ghost text-base-content/50 hover:bg-base-200 hover:text-base-content" @click="closeImportModal" aria-label="Close modal" > ✕ </button>
+      </div>
+
+      <!-- Summary -->
+      <div class="mb-6 grid grid-cols-3 gap-3">
+	<div class="rounded-2xl border border-success/20 bg-success/5 p-4 text-center">
+	  <div class="text-2xl font-bold text-success"> {{ importResults?.added }} </div>
+	  <div class="mt-1 text-xs font-medium uppercase tracking-wide text-base-content/60"> Added </div>
+	</div> <div class="rounded-2xl border border-warning/20 bg-warning/5 p-4 text-center">
+	  <div class="text-2xl font-bold text-warning"> {{ importResults?.skipped }} </div>
+	  <div class="mt-1 text-xs font-medium uppercase tracking-wide text-base-content/60"> Skipped </div>
+	</div> <div class="rounded-2xl border border-error/20 bg-error/5 p-4 text-center">
+	  <div class="text-2xl font-bold text-error"> {{ importResults?.failed }} </div>
+	  <div class="mt-1 text-xs font-medium uppercase tracking-wide text-base-content/60"> Failed </div>
+	</div>
+      </div>
+
+      <!-- Errors -->
+      <div v-if="importResults?.errors?.length" class="mb-6 rounded-2xl border border-error/20 bg-error/5 p-4" >
+	<div class="mb-3 flex items-center gap-2 text-sm font-semibold text-error">
+	  <span class="text-base">!</span> Import errors </div>
+	<div class="space-y-2">
+	  <div v-for="error in importResults.errors" :key="error[0]" class="flex gap-3 rounded-xl bg-base-100/70 px-3 py-2 text-sm" >
+	    <span class="shrink-0 font-mono text-xs text-base-content/50"> Line {{ error[0] }} </span>
+	    <span class="text-base-content/80"> {{ error[1] }} </span>
+	  </div>
+	</div>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end border-t border-base-200 pt-5">
+	<button type="button" class="btn btn-primary rounded-xl px-6" @click="closeImportModal" > Done </button>
+      </div>
+    </div>
+
+    <!-- Backdrop click to close -->
+    <form method="dialog" class="modal-backdrop">
+      <button @click="closeImportModal">close</button>
+    </form>
+  </dialog>
+
 </template>
 
 <style scoped>

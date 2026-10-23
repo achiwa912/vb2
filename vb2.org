@@ -1709,3 +1709,120 @@ src/views/PracView.vue:  await booksStore.syncServer()
 - /words conflicts with backend
 - time to migrate be api under /api -> migrated
 
+** sample books
+*** literature19c
+- AI: Gemini (prompt updated after this)
+  - Needed to eliminate duplicates
+  - Then it gave me only 64
+  - It even tried to open its own flashcard (I quit using Gemini for this)
+#+begin_src 
+Generate 5 English vocabulary flashcards for me.
+My learning goal: Read 19th century literature comfortably
+My English level: Advanced; give me 13000+ level only
+My interests: Computer, software development and IT
+Requirements:
+- Select useful English words appropriate for my learning goal.
+- For each word, provide a SHORT, concise, accurate definition.
+- Write one SHORT and SUCCINCT sample sentence (can be a short phrase) that uses the target word correctly.  Try to fit to 3-8 words.
+- Use simpler English in definitions and sample sentences than in the target word.
+- Use my interests to make the sample sentences more engaging and memorable.
+- Make the meaning of each target word understandable from its sentence.
+- Avoid unnecessarily difficult words in definitions and sentences.
+- Do not repeat target words.
+Output exactly three tab-separated fields per line:
+word<TAB>definition<TAB>sample sentence
+
+Do not include a header, numbering, Markdown table, or commentary. Output only the data lines in a code snippet so I can copy & paste, then import them into a flashcard app that I use.  Do not start YOUR flashcard app.
+#+end_src
+
+
+*** social
+- AI: ChatGPT
+  - Needed to ask making 20% or more phrasal verbs
+
+#+begin_src 
+Generate 5 English vocabulary flashcards for me.
+My learning goal: Advanced everyday English
+My English level: Intermediate-advanced
+My interests/theme: family, travel and social situations theme; phrasal verbs welcome
+Requirements:
+- Select useful English words appropriate for my learning goal.
+- For each word, provide a SHORT, concise, accurate definition.
+- Write one SHORT and SUCCINCT sample sentence (can be a short phrase) that uses the target word correctly.  Try to fit to 3-8 words.
+- Use simpler English in definitions and sample sentences than in the target word.
+- Use my interests to make the sample sentences more engaging and memorable.
+- Make the meaning of each target word understandable from its sentence.
+- Avoid unnecessarily difficult words in definitions and sentences.
+- Do not repeat target words.  Once you create a list, check for duplicates before presenting to me.
+Output exactly three tab-separated fields per line:
+word<TAB>definition<TAB>sample sentence
+
+Do not include a header, numbering, Markdown table, or commentary. Output only the data lines in a code snippet so I can copy & paste, then import them into a flashcard app that I use.  Do not start YOUR flashcard app.
+#+end_src
+
+*** toeic800
+- AI: ChatGPT
+#+begin_src 
+Generate 5 English vocabulary flashcards for me.
+My learning goal: I want to take TOEIC score 800
+My English level: TOEIC 600; give me TOEIC 800 level or more
+My interests/theme: Dragon ball manga and anime
+Requirements:
+- Select useful English words appropriate for my learning goal.
+- For each word, provide a SHORT, concise, accurate definition.
+- Write one SHORT and SUCCINCT sample sentence (can be a short phrase) that uses the target word correctly.  Try to fit to 3-8 words.
+- Use simpler English in definitions and sample sentences than in the target word.
+- Use my interests to make the sample sentences more engaging and memorable.
+- Make the meaning of each target word understandable from its sentence.
+- Avoid unnecessarily difficult words in definitions and sentences.
+- Do not repeat target words.  Once you create a list, check for duplicates before presenting to me.
+Output exactly three tab-separated fields per line:
+word<TAB>definition<TAB>sample sentence
+
+Do not include a header, numbering, Markdown table, or commentary. Output only the data lines in a code snippet so I can copy & paste, then import them into a flashcard app that I use.  Do not start YOUR flashcard app.
+#+end_src
+
+*** sat_challenging
+- AI: ChatGPT
+#+begin_src 
+Generate 5 English vocabulary flashcards for me.
+My learning goal: Ace with SAT test
+My English level: Advanced; Give me only challenging words
+My interests: I like baseball
+Requirements:
+- Select useful English words appropriate for my learning goal.
+- For each word, provide a SHORT, concise, accurate definition.
+- Write one SHORT and SUCCINCT sample sentence (can be a short phrase) that uses the target word correctly.  Try to fit to 3-8 words.
+- Use simpler English in definitions and sample sentences than in the target word.
+- Use my interests to make the sample sentences more engaging and memorable.
+- Make the meaning of each target word understandable from its sentence.
+- Avoid unnecessarily difficult words in definitions and sentences.
+- Do not repeat target words.  Once you create a list, check for duplicates before presenting to me.
+Output exactly three tab-separated fields per line:
+word<TAB>definition<TAB>sample sentence
+
+Do not include a header, numbering, Markdown table, or commentary. Output only the data lines in a code snippet so I can copy & paste, then import them into a flashcard app that I use.  Do not start YOUR flashcard app.
+#+end_src
+
+*** the_economist
+- AI: DeepSeek
+#+begin_src 
+Generate 5 English vocabulary flashcards for me.
+My learning goal: I want to read The Economist magazine comfortably
+My English level: Advanced; I have 10000+ words
+My interests/theme: Economics & business
+Requirements:
+- Select useful English words appropriate for my learning goal.
+- For each word, provide a SHORT, concise, accurate definition.
+- Write one SHORT and SUCCINCT sample sentence (can be a short phrase) that uses the target word correctly.  Try to fit to 3-8 words.
+- Use simpler English in definitions and sample sentences than in the target word.
+- Use my interests to make the sample sentences more engaging and memorable.
+- Make the meaning of each target word understandable from its sentence.
+- Avoid unnecessarily difficult words in definitions and sentences.
+- Do not repeat target words.  Once you create a list, check for duplicates before presenting to me.
+Output exactly three tab-separated fields per line:
+word<TAB>definition<TAB>sample sentence
+
+Do not include a header, numbering, Markdown table, or commentary. Output only the data lines in a code snippet so I can copy & paste, then import them into a flashcard app that I use.  Do not start YOUR flashcard app.
+#+end_src
+
