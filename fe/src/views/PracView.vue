@@ -41,7 +41,7 @@ const infoTried = computed(() => booksStore.infoTried)
 const infoRemain = computed(() => engine.getInfoRemain())
 const infoWithin3 = computed(() => engine.getInfoWithin3())
 
-const sessionRemain = computed(() => engine.getInfoSession0() + booksStore.newWordsCap)
+const sessionRemain = computed(() => Math.min(infoRemain.value, engine.getInfoSession0() + booksStore.newWordsCap))
 
 const currentWord = computed(() => {
   if (engine.pracIdx == null) return null
