@@ -161,8 +161,6 @@ export class PracEngine {
     }
     if (this.moveToWins(due)) return
 
-    // if (this.statusMove('learning')) return
-    // if (this.statusMove('waiting')) return
     if (this.statusMove('new')) return
 
     // words w/o practices
@@ -171,11 +169,11 @@ export class PracEngine {
       if (this.lw.length === this.lwsize && this.ww.length === this.wwsize) {
 	break
       }
-      this.store.newWordsCap -= 1
-      if (this.store.newWordsCap < 0) {
-	this.store.newWordsCap = 0
-	break
-      }
+      // this.store.newWordsCap -= 1
+      // if (this.store.newWordsCap < 0) {
+      // 	this.store.newWordsCap = 0
+      // 	break
+      // }
       const p: PracticeSchema = {
 	direction: this.store.pracDir!,
 	due_counter: null,
@@ -277,6 +275,7 @@ export class PracEngine {
       this.store.pracs[idx]!.status = 'review'
       this.store.pracs[idx]!.due_dates = 2
       this.store.pracs[idx]!.due_counter = 2
+      this.store.newWordsCap -= 1
     }
 
     this.lw.shift()
@@ -304,6 +303,7 @@ export class PracEngine {
       prac.status = 'review'
       prac.due_dates = 1
       prac.due_counter = 1
+      this.store.newWordsCap -= 1
       this.lw.shift()
 
       const pix = this.ww.shift()
@@ -350,6 +350,17 @@ export class PracEngine {
     )
   }
 
+  getInfoSession0(): number {
+    return (
+      this.getInfoDue() +
+	this.store.pracs.filter(
+	  (p) => p.direction === this.store.pracDir &&
+	    (p.status == 'review' &&
+	      p.due_counter == 0)
+	).length
+    )
+  }
+  
   getInfoWithin3(): number {
     return (
       this.store.pracs.filter(
