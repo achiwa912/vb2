@@ -259,9 +259,16 @@ export class PracEngine {
     if (idx === null) return
     this.pracIdx = idx
     this.lw.push(idx)
-    this.store.pracs[idx]!.status = 'learning'
-    this.store.pracs[idx]!.last_edited = this.now().toISOString()
-    this.store.pracs[idx]!.last_practiced = this.now().toISOString()
+
+    const prac = this.store.pracs[idx]!
+    if (prac.status === 'review') {
+      // lapsed review word: give back the slot that graduation will take again
+      this.store.newWordsCap++
+    }
+    prac.status = 'learning'
+    prac.last_edited = this.now().toISOString()
+    prac.last_practiced = this.now().toISOString()
+    
     this.doPrac()
     this.logPrac(idx)
   }
