@@ -32,6 +32,7 @@ interface UndoState {
   infoTried: number
   infoMem: number
   isFlipped: boolean
+  newWordsCap: number
   lw: number[]
   ww: number[]
   pracIdx: number | null
@@ -48,7 +49,9 @@ export class PracEngine {
   isFlipped: boolean
   undoArray: UndoState[]
   //newWordsCap: number
-  
+
+  private newIntroduced: number
+  private newQuota: number
   private store: PracStoreLike
   private lwsize: number
   private wwsize: number
@@ -73,6 +76,8 @@ export class PracEngine {
     this.store.infoTried = 0
     this.store.infoMem = 0
     this.store.newWordsCap = 20  // daily new words cap (actually, per session)
+    this.newIntroduced = 0
+    this.newQuota = this.store.newWordsCap
   }
 
   resetWindows() {
@@ -174,9 +179,7 @@ export class PracEngine {
       // 	this.store.newWordsCap = 0
       // 	break
       // }
-      if (this.store.newWordsCap - this.lw.length - this.ww.length <= 0) {
-	break
-      }
+      if (this.newIntroduced >= this.newQuota) break
       const p: PracticeSchema = {
 	direction: this.store.pracDir!,
 	due_counter: null,
@@ -193,6 +196,7 @@ export class PracEngine {
       if (idx !== -1) wnp.splice(idx, 1)
 
       this.store.pracs.push(p)
+      this.newIntroduced++
       const pix = this.store.pracs.length - 1
 
       if (this.lw.length < this.lwsize) {
@@ -332,6 +336,16 @@ export class PracEngine {
     this.logPrac(idx)
   }
 
+  recomputeIntroTracking() {
+    const Q = 20
+    this.newQuota = Q
+    const inFlight = this.store.pracs.filter(
+      p => p.direction === this.store.pracDir &&
+        ['new', 'learning', 'waiting'].includes(p.status as string)
+    ).length
+    this.newIntroduced = (Q - this.store.newWordsCap) + inFlight
+  }
+  
   getInfoDue(): number {
     return (
       this.store.pracs.filter(
@@ -355,9 +369,7 @@ export class PracEngine {
 
   getInfoSession(): number {
     return (
-      this.store.newWordsCap +
-	this.lw.length +
-	this.ww.length
+      this.store.newWordsCap + this.getInfoDue()
     )
   }
   
@@ -379,6 +391,7 @@ export class PracEngine {
       "infoTried": this.store.infoTried,
       "infoMem": this.store.infoMem,
       "isFlipped": this.isFlipped,
+      "newWordsCap": this.store.newWordsCap,
       "lw": [...this.lw],
       "ww": [...this.ww],
       "pracIdx": this.pracIdx,
@@ -394,6 +407,7 @@ export class PracEngine {
     this.store.infoTried = elem.infoTried
     this.store.infoMem = elem.infoMem
     this.isFlipped = elem.isFlipped
+    this.store.newWordsCap = elem.newWordsCap
     this.lw = [...elem.lw]
     this.ww = [...elem.ww]
     this.pracIdx = elem.pracIdx

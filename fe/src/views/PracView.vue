@@ -439,6 +439,7 @@ onMounted(async () => {
   if (await booksStore.syncServer()) {
     booksStore.updateSnapshot()
   }
+  engine.recomputeIntroTracking()
   if (unmounted) return
   engine.doPrac()
   if (unmounted) return
