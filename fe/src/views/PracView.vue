@@ -41,7 +41,7 @@ const infoTried = computed(() => booksStore.infoTried)
 const infoRemain = computed(() => engine.getInfoRemain())
 const infoWithin3 = computed(() => engine.getInfoWithin3())
 
-const sessionRemain = computed(() => Math.min(infoRemain.value, engine.getInfoSession0() + booksStore.newWordsCap))
+const sessionRemain = computed(() => Math.min(infoRemain.value, engine.getInfoSession()))
 
 const currentWord = computed(() => {
   if (engine.pracIdx == null) return null
@@ -474,7 +474,7 @@ onUnmounted(() => {
       <div class="card-body py-3 sm:py-4">
 	<div class="grid grid-cols-3 gap-4">
 	  <div class="flex items-center gap-1"><Check />{{ infoMem }} <X />{{ infoTried - infoMem }}</div>
-	  <div>{{ infoRemain }} ({{ sessionRemain }}) left</div>
+	  <div>{{ sessionRemain }} ({{ infoRemain }}) left</div>
 	  <div>+{{ infoWithin3 }} soon</div>
 	</div>
       </div>

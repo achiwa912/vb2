@@ -353,14 +353,11 @@ export class PracEngine {
     )
   }
 
-  getInfoSession0(): number {
+  getInfoSession(): number {
     return (
-      this.getInfoDue() +
-	this.store.pracs.filter(
-	  (p) => p.direction === this.store.pracDir &&
-	    (p.status == 'review' &&
-	      p.due_counter == 0)
-	).length
+      this.store.newWordsCap +
+	this.lw.length +
+	this.ww.length
     )
   }
   
