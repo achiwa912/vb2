@@ -174,6 +174,9 @@ export class PracEngine {
       // 	this.store.newWordsCap = 0
       // 	break
       // }
+      if (this.store.newWordsCap - this.lw.length - this.ww.length <= 0) {
+	break
+      }
       const p: PracticeSchema = {
 	direction: this.store.pracDir!,
 	due_counter: null,
