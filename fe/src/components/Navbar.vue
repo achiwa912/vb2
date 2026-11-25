@@ -24,9 +24,11 @@ function quitDemo() {
 }
 
 async function logout() {
-  if (!(await booksStore.syncServer())) {
+  if ((await booksStore.syncBook()) !== 'ok') {
     toastRef.value?.showAlert(`Sync with server failed`, 'error')
     return
+  } else {
+    await booksStore.flushPend()
   }
   booksStore.loggingOut = true
   try {
@@ -44,9 +46,9 @@ async function goHome() {
     router.push('/demo')
     return
   }
-  if (route.path == '/prac') {
-    await booksStore.syncServer()
-  }
+  // if (route.path == '/prac') {
+  //   await booksStore.syncBook()
+  // }
   booksStore.activeBookId = null
   router.push('/')
 }
@@ -96,7 +98,7 @@ function goWords() {
           </div>
 
           <!-- Loading spinner -->
-          <span v-if="booksStore.isLoading" class="loading loading-spinner loading-md mx-4"></span>
+          <span v-if="booksStore.isLoading > 0" class="loading loading-spinner loading-md mx-4"></span>
       
         </div>
     

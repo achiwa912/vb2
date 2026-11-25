@@ -1826,3 +1826,129 @@ word<TAB>definition<TAB>sample sentence
 Do not include a header, numbering, Markdown table, or commentary. Output only the data lines in a code snippet so I can copy & paste, then import them into a flashcard app that I use.  Do not start YOUR flashcard app.
 #+end_src
 
+** offline mode
+*** Overview
+- store books, words, pracs in localStorage
+- books and words are for read-cache for offline practice
+- multiple pracs can be unsynced until the server is available
+- if those data > 5MB (max localStorage size), delete words & pracs (if no updates) from cache
+- if offline
+| from/to | books | words     | prac |
+|---------+-------+-----------+------|
+| books   | -     | use cache | -    |
+| words   | none  | -         | none |
+| pracs   | none  | none      | -    |
+
+*** data structure
+- books (re-use) -> vb2:<user_id>:cache:books:<ver> (localStorage only)
+- booksCache[] -> vb2:<user_id>:cache:booksCache:<ver>:<book_id> (localStorage only)
+  - bookId
+  - hasPend: boolean
+  - words: WordSchema[]
+  - pracs: PracticeSchema[]
+- booksStore.hasPend[] Set of book_id (on memory/Pinia only)
+
+*** hasPend[] -> Set<number>
+- add
+  - in logPrac at every log create
+  - *NOT* in syncServer when due_counter is updated - user wouldn't care/notice
+  - *NOT* for undo - should be no side effect if sync non-dirty
+- remove
+  - successful syncBook (see below)
+
+*** update localStorage
+- save books to localStorage cache
+  - in fetchBooks()
+- saveBook() save book to LS cache (use activeBookId)
+  - when moving from prac/words view to books view
+  - need to reconcile prac & cache with last_edited
+  - after successful push to server (server might have a later version.  reset hasPend to false)
+- [later] if they fail because localStorage size is too big, purge a non-dirty book (words and pracs) from LS and retry.  If none to purge, fail.
+
+*** save pends to server
+- flushPend() in booksStore
+- after all successful server API, check hasPend[] and call syncBook(book_id)
+  - use navigator.locks to guard syncBook (vb2:<user_id>:sync:<book_id>)
+
+*** for reload and tab close
+- use snapshot to generate booksCache for the book (in PracView)
+  - at startup, generate/update booksCache
+    - it is only when there are log records after reload --> syncPending()
+    - also clean old version cache
+  - note: touch a single book while in PracView
+- at startup, re-create hasPend[] from booksCache[] (in all views)
+
+*** other changes
+- syncBook 
+  - modify to take bookId. if not provided, use activeBookId
+  - removed bookId from hasPend Set if successful
+- cacheSnap - (new) generate cache book from snapshot
+  - called from syncPending on reload
+  - actually, reconcile existing cache with snapshot
+  - if no existing cache, just use snapshot
+- syncServer -> rename to updateDueCounters(); no syncBook
+- onMounted() in WordsView, BooksView, PracView
+  - if hasPend[] is [], re-create it from booksCache[]
+- onMounted() in PracView 
+  - updateDueCounters() for the book, direction
+  - use snapshot to generate cache
+- onMounted() in WordsView
+  - load from cache if syncBook failed
+- onBeforeRouteLeave in both WordsView and PracView
+  - saveBook(), then syncBook() (no await) to push pending if dirty.
+    - [later] if saveBook() fails, try syncBook() then saveBook()
+    - if both fails, and if to BooksView, block
+
+*** bug scenarios
+**** Want to reduce server accesses; syncBook too heavy
+***** idea
+- pull from server only when moving from BooksView to WordsView
+  - At the same time, push pracs from cache
+  - run flushPend after
+- push to server when moving to BooksView from Words/Pracs views
+- also push to server - manualSync, logout
+- note: syncBook push&pull after all
+
+***** details
+- syncBook currently used in
+  - flushPend loop pending books and flush
+  - Navbar from /prac to /, logout
+  - PracView manualSync, updateWord, deleteWord
+  - PracView onBeforeRouteLeave, onMounted
+  - WordsView onMounted, onBeforeRouteLeave
+- must push and/or pull (use syncBook -> push AND pull)
+  - PracView manualSync
+    - if successful, call flushPend no await
+  - Prac/WordsView onBeforeRouteLeave to /
+    - if successful, call flushPend no await
+  - Navbar logout
+  - WordsView onMounted (from /)
+    - push pracs from loadCacheBook
+    - if successful, call flushPend no await
+  - PracView updateWord, deleteWord
+    - if successful, call flushPend no await
+- can let go
+  - Navbar from /prac to /
+  - PracView onMounted
+    - but updateSnaphost stays
+
+**** tab close leaves snapshot orphaned
+- because syncPending updates snapshot for the session (tab close invalidates it)
+- BooksView onMounted calls syncPendAll
+  - iterate all snapshot > saveBook
+
+
+#+begin_src 
+uv run pytest # in venv
+uv run ruff check .
+pnpm test
+pnpm run lint
+pnpm build
+rr_vb2
+#+end_src
+
+#+begin_src 
+flask --app be.api:app run --port 8000 --debug
+pnpm dev
+#+end_src
+

@@ -1,5 +1,5 @@
 import type { components } from '@/types/api'
-import type { LogRecord } from '@/stores/books'
+import type { LogRecord, syncBookResult } from '@/stores/books'
 
 type PracticeSchema = components['schemas']['PracticeSchema']
 type WordSchema = components['schemas']['WordSchema']
@@ -8,6 +8,7 @@ type PracDir = components['schemas']['PracDir']
 export interface PracStoreLike {
   pracs: PracticeSchema[]
   words: WordSchema[]
+  activeBookId: number | null
   wordsNoPrac: number[]
   pracDir: PracDir | null
   lastSyncTime: Date | null
@@ -16,8 +17,9 @@ export interface PracStoreLike {
   infoMem: number
   infoTried: number
   newWordsCap: number
+  hasPend: Set<number>
   createWordsNoPrac(): void
-  syncServer(): Promise<boolean>
+  syncBook(): Promise<syncBookResult>
   isNextDayOrLater(date: Date | null, now?: Date): boolean
 }
 
@@ -44,11 +46,8 @@ export class PracEngine {
   lw: number[]
   ww: number[]
   pracIdx: number | null
-  //infoTried: number
-  //infoMem: number
   isFlipped: boolean
   undoArray: UndoState[]
-  //newWordsCap: number
 
   private newIntroduced: number
   private newQuota: number
@@ -70,9 +69,6 @@ export class PracEngine {
     this.pracIdx = null
     this.isFlipped = false
     this.undoArray = []
-    //this.infoTried = 0
-    //this.infoMem = 0
-    //this.newWordsCap = 20  // daily new words cap (actually, per session)
     this.store.infoTried = 0
     this.store.infoMem = 0
     this.store.newWordsCap = 20  // daily new words cap (actually, per session)
@@ -145,7 +141,6 @@ export class PracEngine {
 	this.store.pracs[pix]!.status = 'learning'
       }
       this.lw.push(pix)
-      // this.store.createWordsNoPrac()  // why here?
     }
     
     if (this.statusMove('learning')) return
@@ -174,11 +169,6 @@ export class PracEngine {
       if (this.lw.length === this.lwsize && this.ww.length === this.wwsize) {
 	break
       }
-      // this.store.newWordsCap -= 1
-      // if (this.store.newWordsCap < 0) {
-      // 	this.store.newWordsCap = 0
-      // 	break
-      // }
       if (this.newIntroduced >= this.newQuota) break
       const p: PracticeSchema = {
 	direction: this.store.pracDir!,
@@ -232,6 +222,7 @@ export class PracEngine {
       newWordsCap: this.store.newWordsCap
     }
     localStorage.setItem(`vb2:${sessionId}:log:${this.store.pracCounter}`, JSON.stringify(record))
+    this.store.hasPend.add(this.store.activeBookId!)  // mark as dirty
     if (this.store.pracCounter % 20 == 0) { // once every 20 writes
       const existing = localStorage.getItem('vb2:sessions')
       const sessions = existing ? JSON.parse(existing) : []

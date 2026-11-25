@@ -21,9 +21,11 @@ function makePractice(overrides: Partial<PracticeSchema> = {}): PracticeSchema {
 
 function makeStore(overrides: Partial<PracStoreLike> = {}): PracStoreLike {
   return {
-    pracs: [],
     words: [],
+    pracs: [],
     wordsNoPrac: [],
+    activeBookId: null,
+    hasPend: new Set<number>(),
     pracDir: 'wd',
     lastSyncTime: null,
     pracCounter: 0,
@@ -32,7 +34,7 @@ function makeStore(overrides: Partial<PracStoreLike> = {}): PracStoreLike {
     newWordsCap: 0,
     userId: 1,
     createWordsNoPrac: vi.fn(),
-    syncServer: vi.fn(async () => true),
+    syncBook: vi.fn(async () => 'ok' as const),
     isNextDayOrLater: vi.fn(() => false),
     ...overrides,
   }

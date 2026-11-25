@@ -8,7 +8,6 @@ import { useRoute } from 'vue-router'
 type BookSchema = components['schemas']['BookSchema']
 type WordSchema = components['schemas']['WordSchema']
 type PracticeSchema = components['schemas']['PracticeSchema']
-//type ListBooksResp = components['schemas']['ListBooksResp']
 type PracDir = components['schemas']['PracDir']
 
 export interface LogRecord {
@@ -17,6 +16,15 @@ export interface LogRecord {
   infoTried: number
   newWordsCap: number
 }
+
+export interface CacheRecord {
+  bookId: number
+  hasPend: boolean
+  words: WordSchema[]
+  pracs: PracticeSchema[]
+}
+
+export type syncBookResult = 'ok' | 'continue' | 'stop'
 
 export const useBooksStore = defineStore('books', () => {
   const books = ref<BookSchema[]>([])
@@ -31,12 +39,14 @@ export const useBooksStore = defineStore('books', () => {
   const infoTried = ref<number>(0)
   const newWordsCap = ref<number>(20)
   const loggingOut = ref<boolean>(false)
-  const isLoading = ref<boolean>(false)
+  const isLoading = ref<number>(0)  // this is counter now! (was boolean)
+  const hasPend = ref<Set<number>>(new Set())  // books with dirty cache
   
   const route = useRoute()
 
   const userStore = useUserStore()
   const userId = computed(() => userStore.user_id ?? null)
+  const CACHE_VER = 1  // cache version
 
   function reset() {
     books.value = []
@@ -46,9 +56,13 @@ export const useBooksStore = defineStore('books', () => {
     pracDir.value = null
     wordsNoPrac.value = []
     lastSyncTime.value = null
+    pracCounter.value = 0
     infoMem.value = 0
     infoTried.value = 0
     newWordsCap.value = 20
+    loggingOut.value = false
+    isLoading.value = 0
+    hasPend.value = new Set()
   }
 
   function prepDemo() {
@@ -64,175 +78,451 @@ export const useBooksStore = defineStore('books', () => {
   }
   
   async function fetchBooks() {
-    isLoading.value = true
-    const { data, error } = await client.GET('/api/books')
-    isLoading.value = false
-    if (error) {
+    const cKey = `vb2:${userId.value}:cache:books:${CACHE_VER}`
+    let data, error
+    isLoading.value++
+    try {
+      ({ data, error } = await client.GET('/api/books'))
+    } catch (err) {
+      error = err
+    } finally {
+      isLoading.value--
+    }
+    if (error) {  // loading books from cache
+      console.log('fetchBooks - loading from server failed.  Using cache')
+      try {
+	const raw = localStorage.getItem(cKey)
+	if (raw) {
+	  books.value = JSON.parse(raw)
+	}
+      } catch (err) {
+	console.log('fetchBooks - loading from cache failed.', err)
+      }
       return
     }
-
-    books.value = data.books
+    books.value = data!.books
+    localStorage.setItem(cKey, JSON.stringify(books.value))
   }
 
   async function fetchWords() {
     const id = activeBookId.value
     if (id === null) return
-    isLoading.value = true
-    const { data, error } = await client.GET("/api/books/{id}/words", {
+    let data, error
+    isLoading.value++
+    try {
+      ({ data, error } = await client.GET("/api/books/{id}/words", {
       params: { path: { id: id } },
-    })
-    isLoading.value = false
+      }))
+    } catch (err) {
+      error = err
+    } finally {
+      isLoading.value--
+    }
     if (error) {
+      console.log('fetchWords - loading from server failed.  Using cache.')
+      try {
+	const raw = localStorage.getItem(`vb2:${userId.value}:cache:booksCache:${CACHE_VER}:${id}`)
+	if (raw) {
+	  const cr: CacheRecord = JSON.parse(raw)
+	  words.value = cr.words
+	}
+      } catch {
+	console.log('fetchWords - loading from cache failed.')
+      }
       return
     }
-    words.value = data.words
+    words.value = data!.words
     return
   }
 
-  async function syncBook() {
-    if (route.path.startsWith('/demo')) return true
-    if (activeBookId.value === null) return true
-    let data, error
-    isLoading.value = true
-    try {
-      const res = await client.POST('/api/sync/{id}', {
-	params: { path: { id: activeBookId.value } },
-	body: { practices: pracs.value },
-      })
-      data = res.data
-      error = res.error
-    } catch (err) {
-      isLoading.value = false
-      console.log('syncBook - exception while sync with server', err)
-      return false
+  // create hasPend from booksCache
+  function createHasPend() {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith(`vb2:${userId.value}:cache:booksCache:${CACHE_VER}:`)) {
+	const bid = Number(key.split(':')[5]) // book id
+	try {
+	  const raw = localStorage.getItem(key)
+	  if (raw) {
+	    const cr: CacheRecord = JSON.parse(raw)
+	    if (cr.hasPend) {
+	      hasPend.value.add(bid)
+	    }
+	  } else {  // doesn't have a value
+	    localStorage.removeItem(key)
+	  }
+	} catch (err) {
+	  console.log(`createHasPend - failed with key: ${key}`, err)
+	  continue
+	}
+      }
     }
-    isLoading.value = false
-    if (error) {
-      console.log('syncBook - error sync with server', error)
-      return false
+  }
+  
+  // flush all dirty books (ie, in hasPend)
+  async function flushPend(skipBookId?: number | null) {
+    if (hasPend.value.size == 0) return
+
+    const copyHasPend = new Set(hasPend.value)
+    for (const i of copyHasPend) {
+      if (i == skipBookId) continue
+      if (await syncBook(i) == 'stop') return
     }
-    const idx = books.value.findIndex((b) => b.id === activeBookId.value)
-    if (idx !== -1 && data) {
-      books.value[idx] = data.book
-      words.value = data.words
-      pracs.value = data.practices
+  }
+
+  // save book (activeBookId) pinia to cache
+  async function saveBook() {
+    if (!activeBookId.value) return true  // no book to save
+
+    const lockName = `vb2:${userId.value}:sync:${activeBookId.value}`
+    return await navigator.locks.request(lockName, async () => {
+      let raw = null
+      try {
+	raw = localStorage.getItem(`vb2:${userId.value}:cache:booksCache:${CACHE_VER}:${activeBookId.value}`)
+      } catch (err) {
+	console.log(`saveBook: localStorage.getItem failed for vb2:${userId.value}:cache:booksCache:${CACHE_VER}:${activeBookId.value}`, err)
+	return false // read error from localStorage
+      }
+      if (raw) {
+	try {
+	  const cr: CacheRecord = JSON.parse(raw)
+	  const wordIds = new Set(words.value.map(w => w.id))
+	  const filterOrphans = wordIds.size > 0  // empty list = not loaded (or last word deleted), so don't filter
+	  const toAdd: PracticeSchema[] = []
+	  for (const cp of cr.pracs) {
+	    if (filterOrphans && !wordIds.has(cp.word_id)) continue  // word deleted
+	    const mix = pracs.value.findIndex(p => p.word_id == cp.word_id && p.direction == cp.direction)
+	    if (mix === -1) {
+              toAdd.push({ ...cp })
+	    } else if (ts(cp.last_edited) > ts(pracs.value[mix]!.last_edited)) {
+              pracs.value[mix] = { ...cp }
+	    }
+	  }
+	  pracs.value.push(...toAdd)
+	} catch (err) {
+	  console.log(`saveBook - JSON parse error`, err)
+	}
+      }
+      // if (raw) {
+      // 	try {
+      // 	  const cr: CacheRecord = JSON.parse(raw)
+      // 	  // reconcile with last_edited
+      // 	  const toAdd = []
+      // 	  for (let i=0; i<cr.pracs.length; i++) {
+      // 	    const mix = pracs.value.findIndex(p => (p.word_id == cr.pracs[i]!.word_id) && (p.direction == cr.pracs[i]!.direction))
+      // 	    if (mix === -1 && words.value.some(w => w.id == cr.pracs[i]!.word_id)) {
+      // 	      toAdd.push({...cr.pracs[i]!})
+      // 	    } else if (ts(cr.pracs[i]!.last_edited) > ts(pracs.value[mix]!.last_edited)) {
+      // 	      pracs.value[mix] = { ...cr.pracs[i]! }
+      // 	    }
+      // 	  }
+      // 	  pracs.value.push(...toAdd)
+      // 	} catch (err) {
+      // 	  console.log(`saveBook - JSON parse error`, err)
+      // 	}
+      // }
+      const crec: CacheRecord = {
+	bookId: activeBookId.value!,
+	hasPend: hasPend.value.has(activeBookId.value!),
+	words: words.value,
+	pracs: pracs.value
+      }
+      try {
+	localStorage.setItem(`vb2:${userId.value}:cache:booksCache:${CACHE_VER}:${activeBookId.value}`, JSON.stringify(crec))
+      } catch (err) {
+	if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+	  console.log('saveBook: localStorage quota exceeded', err)
+	} else {
+	  console.log('saveBook: localStorage.setItem failed', err)
+	}
+	return false
+      }
       return true
+    })
+  }
+
+  // epoch ms; unparseable or missing counts as oldest
+  function ts(s: string | null | undefined): number {
+    const t = Date.parse(s ?? '')
+    return Number.isNaN(t) ? 0 : t
+  }
+  
+  // reconcile two arrays of practices
+  function reconPracs(p1: PracticeSchema[], p2: PracticeSchema[]) {
+    const _p: PracticeSchema[] = [...p1]
+    for (const prac of p2) {
+      const ix = _p.findIndex(p => (p.word_id == prac.word_id) && (p.direction == prac.direction))
+      if (ix == -1) {
+	_p.push(prac)
+      } else {
+	if (ts(prac.last_edited) > ts(_p[ix]!.last_edited)) {
+	  _p[ix] = prac
+	}
+      }
     }
-    console.log('syncBook - book dx, words and/or pracs corrupt', idx)
-    return false
+    return _p
+  }
+
+  function hasNewWork(pushed: PracticeSchema[], latest: PracticeSchema[]) {
+    return latest.some((p) => {
+      const q = pushed.find(
+	(x) => x.word_id == p.word_id && x.direction == p.direction,
+      )
+      return !q || ts(p.last_edited) > ts(q.last_edited)
+    })
+  }
+
+  
+  // push pracs to server and pull words and reconciled pracs
+  async function syncBook(bookId?: number | null): Promise<syncBookResult> {
+    if (route.path.startsWith('/demo')) return 'ok'
+
+    const targetId = bookId ?? activeBookId.value
+    const lockName = `vb2:${userId.value}:sync:${targetId}`
+
+    return await navigator.locks.request(lockName, async () => {
+    
+      if (!targetId) return 'ok'
+      const cKey = `vb2:${userId.value}:cache:booksCache:${CACHE_VER}:${targetId}`
+
+      let pushed: PracticeSchema[]
+      if (targetId == activeBookId.value) {
+	pushed = pracs.value.map((p) => ({...p}))  // use books.pracs
+      } else {
+	let cr: CacheRecord | null = null
+	try {
+	  const raw = localStorage.getItem(cKey)
+	  if (raw) cr = JSON.parse(raw)
+	} catch (err) {
+	  console.log('syncBook - cache read failed', err)
+	}
+	if (!cr) {
+	  hasPend.value.delete(targetId)
+	  return 'ok'  // if missing cache book, nothing I can do
+	}
+	pushed = cr.pracs // read from cache
+      }
+
+      let data
+      isLoading.value++
+      // push to server -- many could change before & after
+      try {
+	const res = await client.POST('/api/sync/{id}', {
+	  params: { path: { id: targetId } },
+	  body: { practices: pushed },
+	})
+	if (res.error) {
+	  console.log('syncBook - error sync with server', res.error)
+	  if (res.response.status == 404) {
+	    hasPend.value.delete(targetId)
+	    localStorage.removeItem(cKey) // cache not needed anyway
+	    return 'ok'  // 404 not found
+	  } else if (res.response.status == 400) { // client bug?
+	    return 'continue'
+	  }
+	  return 'stop'
+	}
+	data = res.data
+      } catch (err) {
+	// network error comes here?
+	console.log('syncBook - exception while sync with server', err)
+	return 'stop'
+      } finally {
+	isLoading.value--
+      }
+      if (!data) {
+	console.log('syncBook - no data in response from server')
+	return 'stop'
+      }
+
+      // might be a whole new world
+      let stored: CacheRecord | null = null
+      try { // someone might have saved to cache
+	const raw = localStorage.getItem(cKey)
+	if (raw) stored = JSON.parse(raw)
+      } catch (err) {
+	console.log('syncBook - cache re-read error', err)
+      }
+      const isActive = targetId == activeBookId.value
+      const local = reconPracs(isActive ? pracs.value : [], stored?.pracs ?? [])
+      const dirty = hasNewWork(pushed, local)
+      const merged = reconPracs(local, data.practices)
+
+      if (isActive) { // this function doesn't contaminate pinia words and pracs if it's not activeBookId!
+	words.value = data.words  // from server
+	pracs.value = merged  // reconciled between local and from server
+      }
+      try {
+	const cr: CacheRecord = {
+	  bookId: targetId,
+	  hasPend: dirty,
+	  words: data.words,
+	  pracs: merged,
+	}
+	localStorage.setItem(cKey, JSON.stringify(cr))
+      } catch (err) {
+	console.log('syncBook - cache write failed', err)
+      }
+      
+      const idx = books.value.findIndex((b) => b.id === targetId)
+      if (idx !== -1) books.value[idx] = data.book
+      if (dirty) {
+	hasPend.value.add(targetId)
+      } else {
+	hasPend.value.delete(targetId)  // remove from dirty set
+      }
+      return 'ok'
+    })
+  }
+
+  // load activeBookId book from cache
+  function loadCacheBook() {
+    const bid = activeBookId.value
+    if (!bid) return false
+    
+    const cKey = `vb2:${userId.value}:cache:booksCache:${CACHE_VER}:${bid}`
+    try {
+      const raw = localStorage.getItem(cKey)
+      if (raw) {
+	const cr: CacheRecord = JSON.parse(raw)
+	words.value = cr.words
+	pracs.value = cr.pracs
+	if (cr.hasPend) {
+	  hasPend.value.add(bid)
+	}
+      }
+    } catch (err) {
+      console.log(`loading book id: ${bid} from cache failed`, err)
+      return false
+    }
+    return true
   }
   
   async function addBook(bookName: string | null): Promise<{ status: number, message: string }> {
-    if (!bookName) return { status: 404, message: "Book not found" }
-    isLoading.value = true
-    const { data, error } = await client.POST('/api/books', {
+    if (!bookName) return { status: 404, message: "Book name null" }
+    isLoading.value++
+    try {
+      const { data, error, response } = await client.POST('/api/books', {
       body: { name: bookName },
-    })
-    isLoading.value = false
-    if (error) return { status: 404, message: "Book not found" }
-    books.value.push(data.book)
-    return { status: 200, message: "Added book"}
+      })
+      if (error) {
+	return { status: response.status, message: JSON.stringify(error) }
+      }
+      books.value.push(data!.book)
+      return { status: 200, message: "Added book"}
+    } catch (err) { // network or unexpected error?
+      return { status: 500, message: err instanceof Error ? err.message : String(err) }
+    } finally {
+      isLoading.value--
+    }
   }
 
   async function editBook(bookName: string, book_id: number): Promise<{ status: number, message: string}> {
-    if (!bookName) return { status: 404, message: "Book not found" }
-    isLoading.value = true
-    const { data, error, response } = await client.PATCH('/api/books/{id}', {
-      params: { path: { id: book_id }},
-      body: { name: bookName },
-    })
-    isLoading.value = false
-    if (error) {
-      if ('message' in error) {
-	return { status: response.status, message: error.message }
-      } else {
-	return { status: response.status, message: "?(unhandled)"}
+    if (!bookName) return { status: 999, message: "Book name null" }
+    isLoading.value++
+    try {
+      const { data, error, response } = await client.PATCH('/api/books/{id}', {
+	params: { path: { id: book_id }},
+	body: { name: bookName },
+      })
+      if (error) {
+	return { status: response.status, message: error instanceof Error ? error.message : String(error) }
       }
+      const bix: number | null = id2ixBook(book_id)
+      if (bix === null) return { status: 404, message: "Book not found" }
+      books.value[bix] = data!.book
+      return { status: 200, message: "Updated book"}
+    } catch (err) {
+      return { status: 998, message: err instanceof Error ? err.message : String(err) }
+    } finally {
+      isLoading.value--
     }
-    const bix: number | null = id2ixBook(book_id)
-    if (bix === null) return { status: 404, message: "Book not found" }
-    books.value[bix] = data.book
-    return { status: 200, message: "Updated book"}
   }
 
   async function deleteBook(book: BookSchema | null): Promise<{ status: number, message: string }> {
-    if (!book) return { status: 404, message: "Book not found" }
-    isLoading.value = true
-    const { error, response } = await client.DELETE('/api/books/{id}', {
-      params: { path: { id: book.id }},
-    })
-    isLoading.value = false
-    if (error) {
-      if ('message' in error) {
-	return { status: response.status, message: error.message }
-      } else {
-	return { status: response.status, message: "?(unhandled)"}
+    if (!book) return { status: 999, message: "Book empty" }
+    isLoading.value++
+    try {
+      const { error, response } = await client.DELETE('/api/books/{id}', {
+	params: { path: { id: book.id }},
+      })
+      if (error) {
+	return { status: response.status, message: error instanceof Error ? error.message : String(error) }
       }
+      const bix: number | null = id2ixBook(book.id)
+      if (bix === null) return { status: 998, message: "Book not found" }
+      books.value.splice(bix, 1)
+      return { status: 200, message: "Deleted book" }
+    } catch (err) {
+      return { status: 997, message: err instanceof Error ? err.message : String(err) }
+    } finally {
+      isLoading.value--
     }
-    const bix: number | null = id2ixBook(book.id)
-    if (bix === null) return { status: 404, message: "Book not found" }
-    books.value.splice(bix, 1)
-  return { status: 200, message: "Deleted book" }
   }
   
   async function addWord(word: string | null, definition: string, sample: string, book_id: number | null): Promise<{ status: number, message: string }> {
-    if (!book_id) return { status: 404, message: "Book not found" }
-    if (!word) return { status: 404, message: "Word not found" }
-    isLoading.value = true
-    const { data, error, response } = await client.POST('/api/books/{id}/words', {
-      params: { path: { id: book_id } },
-      body: { word: word, definition: definition, sample: sample },
-    })
-    isLoading.value = false
-    if (error) {
-      if ('message' in error) {
-	return { status: response.status, message: error.message }
-      } else {
-	return { status: response.status, message: "?(unhandled)"}
+    if (!book_id) return { status: 999, message: "Book null" }
+    if (!word) return { status: 998, message: "Word null" }
+    isLoading.value++
+    try {
+      const { data, error, response } = await client.POST('/api/books/{id}/words', {
+	params: { path: { id: book_id } },
+	body: { word: word, definition: definition, sample: sample },
+      })
+      if (error) {
+	return { status: response.status, message: error instanceof Error ? error.message : String(error) }
       }
+      words.value.push(data!.word)
+      return { status: 200, message: "Added word"}
+    } catch (err) {
+      return { status: 997, message: err instanceof Error ? err.message : String(err) }
+    } finally {
+      isLoading.value--
     }
-    words.value.push(data.word)
-    return { status: 200, message: "Added word"}
   }
 
   async function editWord(word: string | null, definition: string, sample: string, book_id: number, word_id: number): Promise<{ status: number, message: string}> {
-    if (!word) return { status: 404, message: "Word not found" }
-    isLoading.value = true
-    const { data, error, response } = await client.PATCH('/api/books/{bid}/words/{wid}', {
-      params: { path: { bid: book_id, wid: word_id } },
-      body: { word: word, definition: definition, sample: sample },
-    })
-    isLoading.value = false
-    if (error) {
-      if ('message' in error) {
-	return { status: response.status, message: error.message }
-      } else {
-	return { status: response.status, message: "?(unhandled)"}
+    if (!word) return { status: 999, message: "Word null" }
+    isLoading.value++
+    try {
+      const { data, error, response } = await client.PATCH('/api/books/{bid}/words/{wid}', {
+	params: { path: { bid: book_id, wid: word_id } },
+	body: { word: word, definition: definition, sample: sample },
+      })
+      if (error) {
+	return { status: response.status, message: error instanceof Error ? error.message : String(error) }
       }
+      const wix: number | null = id2ixWord(word_id)
+      if (wix === null) return { status: 998, message: "Word not found" }
+      words.value[wix] = data!.word
+      return { status: 200, message: "Updated word"}
+    } catch (err) {
+      return { status: 997, message: err instanceof Error ? err.message : String(err) }
+    } finally {
+      isLoading.value--
     }
-    const wix: number | null = id2ixWord(word_id)
-    if (wix === null) return { status: 404, message: "Word not found" }
-    words.value[wix] = data.word
-    return { status: 200, message: "Updated word"}
   }
 
   async function deleteWord(word: WordSchema | null): Promise<{ status: number, message: string}> {
-    if (!word) return { status: 404, message: "Word not found" }
-    isLoading.value = true
-    const { error, response } = await client.DELETE('/api/books/{bid}/words/{wid}', {
-      params: { path: { bid: word.book_id, wid: word.id } },
-    })
-    isLoading.value = false
-    if (error) {
-      if ('message' in error) {
-	return { status: response.status, message: error.message }
-      } else {
-	return { status: response.status, message: "?(unhandled)"}
+    if (!word) return { status: 999, message: "Word null" }
+    isLoading.value++
+    try {
+      const { error, response } = await client.DELETE('/api/books/{bid}/words/{wid}', {
+	params: { path: { bid: word.book_id, wid: word.id } },
+      })
+      if (error) {
+	return { status: response.status, message: error instanceof Error ? error.message : String(error) }
       }
+    } catch (err) {
+      return { status: 997, message: err instanceof Error ? err.message : String(err) }
+    } finally {
+      isLoading.value--
     }
     const wix: number | null = id2ixWord(word.id)
-    if (wix === null) return { status: 404, message: "Word not found" }
+    if (wix === null) return { status: 998, message: "Word not found" }
     words.value.splice(wix, 1)
+    // delete up to 2 pracs of different directions
+    pracs.value = pracs.value.filter(p => p.word_id !== word.id)
+    await saveBook()  // remove from cache as well
     return { status: 200, message: "Deleted word"}
   }
     
@@ -276,9 +566,8 @@ export const useBooksStore = defineStore('books', () => {
     wordsNoPrac.value = wnp
   }
 
-  async function syncServer() {
-    if (route.path.startsWith('/demo')) return true
-    if (!(await syncBook())) return false
+  async function updateDueCounters() {  // was syncServer()
+    if (route.path.startsWith('/demo')) return
 
     createWordsNoPrac()
     lastSyncTime.value = new Date() // now
@@ -286,8 +575,8 @@ export const useBooksStore = defineStore('books', () => {
     // decrement due_counters
     const bookIndex = id2ixBook(activeBookId.value)
     if (bookIndex === null) {
-      console.log('syncServer - no activeBookId', activeBookId.value)
-      return true  // no need for decrementing (or a bug)
+      console.log('updateDueCounters - no activeBookId', activeBookId.value)
+      return
     }
     for (const prac of pracs.value) {
       if (pracDir.value == prac.direction && prac.status == 'review') {
@@ -301,7 +590,7 @@ export const useBooksStore = defineStore('books', () => {
 	}
       }
     }
-    return true
+    return
   }
 
   function isDaysOrOlder(timestamp: Date | string | number, days: number): boolean {
@@ -331,13 +620,6 @@ export const useBooksStore = defineStore('books', () => {
     newWordsCap: number
   }
 
-  // interface LogRecord {
-  //   prac: PracticeSchema
-  //   infoMem: number
-  //   infoTried: number
-  //   newWordsCap: number
-  // }
-  
   function expireOldSessions(sessions: SessionRecord[]): SessionRecord[] {
     const expiredSessionIds = new Set()
     const validSessions = sessions.filter((session: SessionRecord) => {
@@ -360,6 +642,7 @@ export const useBooksStore = defineStore('books', () => {
     return validSessions
   }
 
+  // create snapshot from pinia
   function updateSnapshot(sessionId?: string | null) {
     if (!userId.value) return
     if (!sessionId) {
@@ -378,9 +661,89 @@ export const useBooksStore = defineStore('books', () => {
     }
     localStorage.setItem(`vb2:${sessionId}:snapshot`, JSON.stringify(snapshot))
   }
+
+  // generate cache from snapshot
+  async function cacheSnap(ss: SnapshotRecord, dirty: boolean) {
+    if (!ss.activeBookId) return
+
+    const lockName = `vb2:${userId.value}:sync:${ss.activeBookId}`
+    return await navigator.locks.request(lockName, async () => {
+      let _pracs: PracticeSchema[] = []
+      try {
+	const raw = localStorage.getItem(`vb2:${userId.value}:cache:booksCache:${CACHE_VER}:${ss.activeBookId}`)
+	if (raw) {
+	  const cro: CacheRecord = JSON.parse(raw)
+	  if (cro.hasPend) {
+	    dirty = true
+	  }
+	  _pracs = reconPracs(cro.pracs, ss.pracs) // reconcile cache & ss
+	} else {
+	  _pracs = ss.pracs
+	}
+      } catch (err) {
+	console.log('cacheSnap - cache read error', err)
+	_pracs = ss.pracs
+	dirty = true
+      }
+    
+      if (dirty) {
+	hasPend.value.add(ss.activeBookId!)
+      }
+      const cr: CacheRecord = {
+	bookId: ss.activeBookId!,
+	hasPend: dirty,
+	words: ss.words,
+	pracs: _pracs
+      }
+      try {
+	localStorage.setItem(`vb2:${userId.value}:cache:booksCache:${CACHE_VER}:${ss.activeBookId}`, JSON.stringify(cr))
+      } catch (err) {
+	console.log('cacheSnap - cache write error', err)
+      }
+      if (ss.activeBookId == activeBookId.value) {
+	pracs.value = _pracs
+      }
+    
+      // clean up cache with older versions
+      for (const key of Object.keys(localStorage)) {
+	if (key.startsWith(`vb2:${userId.value}:cache:booksCache:`)) {
+	  const keySubs = key.split(':')
+	  const ver = Number(keySubs[4]) || 0
+	  if (ver < CACHE_VER) {
+	    try {
+	      localStorage.removeItem(key)
+	    } catch (err) {
+	      console.log('cacheSnap - old cache remove error', err)
+	    }
+	  }
+	}
+      }
+    })
+  }
+
+  // Iterate snapshots of all sessions, reconcile cache and sync to server
+  // called only from onMounted in BooksView
+  async function syncPendAll() {
+    const existing = localStorage.getItem('vb2:sessions')
+    const sessions = existing ? JSON.parse(existing) : []
+    for (const session of sessions) {
+      const raw = localStorage.getItem(`vb2:${session.id}:snapshot`)
+      if (raw) {
+	const ss: SnapshotRecord = JSON.parse(raw)
+	if (userId.value && ss.userId !== userId.value) continue
+      }
+      const retval = replayLogs(session.id)
+      if (!retval) continue
+      const { ss, isDirty } = retval
+      localStorage.setItem(`vb2:${session.id}:snapshot`, JSON.stringify(ss))
+      if (isDirty) {
+	await cacheSnap(ss, isDirty)
+      }
+    }
+  }
   
-  function syncPending() {
-    //console.log('syncPending')
+  // Create or update snapshot for the session
+  async function syncPending() {
     let sessionId = sessionStorage.getItem('vb2:sessionId')
     if (sessionId) {
       let cleanFlag = false
@@ -445,7 +808,6 @@ export const useBooksStore = defineStore('books', () => {
 	break
       }
     }
-    // if (i==sessions.length) -> the session is not in the list. Do I care?
     if (i==sessions.length) {
       sessions.push({'id': sessionId, 'updated': new Date().toISOString()})
     }
@@ -453,25 +815,46 @@ export const useBooksStore = defineStore('books', () => {
     localStorage.setItem('vb2:sessions', JSON.stringify(validSessions))
 
     // replay log to snapshot (for the session)
-    //console.log('syncPending: replay start')
+    const retval = replayLogs(sessionId)
+    if (!retval) return
+    const { ss, logList, isDirty } = retval
+
+    localStorage.setItem(`vb2:${sessionId}:snapshot`, JSON.stringify(ss))
+    if (books.value.length == 0 || logList.length > 0) { // reload?
+      // restore from snapshot
+      books.value = ss.books
+      words.value = ss.words
+      pracs.value = ss.pracs  // this will go to server
+      activeBookId.value = ss.activeBookId
+      pracDir.value = ss.pracDir
+      infoMem.value = ss.infoMem
+      infoTried.value = ss.infoTried
+      newWordsCap.value = ss.newWordsCap
+      await cacheSnap(ss, isDirty)  // generate cache from snapshot if reload
+    }
+    pracCounter.value = 0
+  }
+
+  function replayLogs(sessionId: string) {
     const logList: LogRecord[] = []
     const toRemove = []
     let maxCnt = -1
     let _infoMem = 0
     let _infoTried = 0
     let _newWordsCap = 20
+    let isDirty = false
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith(`vb2:${sessionId}:log:`)) {
 	const cnt = Number(key.split(`vb2:${sessionId}:log:`)[1]) || 0
 	const raw = localStorage.getItem(key)
 	if (raw) {
 	  const record: LogRecord = JSON.parse(raw)
-	  if (record.prac.user_id !== userId.value) return  // just break?
+	  if (record.prac.user_id !== userId.value) continue // was return
 	  let i = 0
 	  for (; i<logList.length; i++) {
 	    const log = logList[i]
 	    if (log && log.prac.word_id == record.prac.word_id && log.prac.direction == record.prac.direction) {
-	      if (log.prac.last_edited < record.prac.last_edited) {
+	      if (ts(log.prac.last_edited) < ts(record.prac.last_edited)) {
 		logList[i] = record
 		if (cnt > maxCnt) {
 		  maxCnt = cnt
@@ -496,9 +879,12 @@ export const useBooksStore = defineStore('books', () => {
 	toRemove.push(key)
       }
     }
+    if (logList.length > 0) {
+      isDirty = true
+    }
     // do replay
     const raw = localStorage.getItem(`vb2:${sessionId}:snapshot`)
-    if (!raw) return
+    if (!raw) return null
     const ss: SnapshotRecord = JSON.parse(raw)
     const toAdd = []
     for (const log of logList) {
@@ -506,7 +892,9 @@ export const useBooksStore = defineStore('books', () => {
       for (; i<ss.pracs.length; i++) {
 	const prac = ss.pracs[i]
 	if (prac && prac.word_id == log.prac.word_id && prac.direction == log.prac.direction) {
-	  ss.pracs[i] = log.prac
+	  if (ts(log.prac.last_edited) > ts(prac.last_edited)) {
+	    ss.pracs[i] = log.prac
+	  }
 	  break
 	}
       }
@@ -520,23 +908,12 @@ export const useBooksStore = defineStore('books', () => {
     ss.infoMem = Math.max(ss.infoMem, _infoMem)
     ss.infoTried = Math.max(ss.infoTried, _infoTried)
     ss.newWordsCap = Math.min(ss.newWordsCap, _newWordsCap)
-    localStorage.setItem(`vb2:${sessionId}:snapshot`, JSON.stringify(ss))
-    if (books.value.length == 0) { // reload?
-      // restore from snapshot
-      books.value = ss.books
-      words.value = ss.words
-      pracs.value = ss.pracs  // this will go to server
-      activeBookId.value = ss.activeBookId
-      pracDir.value = ss.pracDir
-      infoMem.value = ss.infoMem
-      infoTried.value = ss.infoTried
-      newWordsCap.value = ss.newWordsCap
-    }
+    
     for (const key of toRemove) {
       localStorage.removeItem(key)
     }
-    pracCounter.value = 0
+    return { ss, logList, isDirty }
   }
   
-  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, syncServer, userId, reset, prepDemo, updateSnapshot, syncPending, pracCounter, infoMem, infoTried, newWordsCap, loggingOut, isLoading }
+  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, loadCacheBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, updateDueCounters, userId, reset, prepDemo, updateSnapshot, syncPendAll, syncPending, pracCounter, infoMem, infoTried, newWordsCap, loggingOut, isLoading, createHasPend, hasPend, flushPend, saveBook }
 })

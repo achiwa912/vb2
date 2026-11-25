@@ -85,9 +85,13 @@ const deleteBook = async () => {
 }
 
 async function exportAll() {
-  booksStore.isLoading = true
-  const { data, error, response } = await client.GET('/api/export')
-  booksStore.isLoading = false
+  let data, error, response
+  booksStore.isLoading++;
+  try {
+    ({ data, error, response } = await client.GET('/api/export'))
+  } finally {
+    booksStore.isLoading--
+  }
   if (error) {
     if ('message' in error) {
       toastRef.value?.showAlert(`Export failed: ${error.message} (${response.status})`, 'error')
@@ -125,11 +129,17 @@ async function importCsv(event: Event) {
   target.value = ''
 
   // if (!currentBook.value) return
-  
-  const { data, error, response } = await client.POST(`/api/importcsv/{id}`, {
-    params: { path: { id: 9999999 } },
-    body: formData as unknown as { file: string },
-  })
+
+  booksStore.isLoading++;
+  let data, error, response
+  try {
+    ({ data, error, response } = await client.POST(`/api/importcsv/{id}`, {
+      params: { path: { id: 9999999 } },
+      body: formData as unknown as { file: string },
+    }))
+  } finally {
+    booksStore.isLoading--
+  }
   if (error) {
     if ('message' in error) {
       toastRef.value?.showAlert(`Import failed: ${error.message} (${response.status})`, 'error')
@@ -167,11 +177,15 @@ async function importAll(event: Event) {
   } finally {
     target.value = ''
   }
-  booksStore.isLoading = true
-  const { error, response } = await client.POST('/api/import', {
-    body: data,
-  })
-  booksStore.isLoading = false
+  let error, response
+  booksStore.isLoading++;
+  try {
+    ({ error, response } = await client.POST('/api/import', {
+      body: data,
+    }))
+  } finally {
+    booksStore.isLoading--
+  }
   if (error) {
     if ('message' in error) {
       toastRef.value?.showAlert(`Import failed: ${error.message} (${response.status})`, 'error')
@@ -227,11 +241,15 @@ const isSearching = computed(() => searchQuery.value.trim().length > 0)
 const isEmpty = computed(() => booksStore.books.length === 0)
 
 onMounted(async () => {
+  await booksStore.syncPendAll()  // Cleanup snapshot logs and update cache
+  booksStore.createHasPend()
   booksStore.books = []
   booksStore.words = []
   booksStore.pracs = []
+  booksStore.activeBookId = null
   await booksStore.fetchBooks()
 })
+
 
 //====== keyboard shortcuts ================================
 

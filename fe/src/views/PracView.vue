@@ -66,7 +66,9 @@ const flipCard = () => {
 
 async function manualSync() {
   engine.resetWindows()
-  await booksStore.syncServer()
+  if (await booksStore.syncBook() == 'ok') {
+    booksStore.flushPend(booksStore.activeBookId)
+  }
   engine.doPrac()
 }
 
@@ -95,21 +97,30 @@ const updateWord = async () => {
     toastRef.value?.showAlert(`Failed updating word: ${currentWord.value?.word}. ${resp.message} (${resp.status})`, 'error')
   }
   closeModal()
-  await booksStore.syncBook()
+  if (await booksStore.syncBook() == 'ok') {
+    booksStore.flushPend(booksStore.activeBookId)
+  }
   engine.doPrac()
 }
 
 const deleteWord = async () => {
+  if (currentWord.value == null) {
+    toastRef.value?.showAlert(`Failed to delete word - currentWord null`, 'error')
+    closeModal()
+    engine.doPrac()
+    return
+  }
   const resp = await booksStore.deleteWord(currentWord.value)
   if (resp.status == 200) {
     toastRef.value?.showAlert(`Deleted word: ${currentWord.value?.word} (id: ${currentWord.value?.id})`, 'success')
-    booksStore.pracs.splice(engine.pracIdx ?? 99999, 1) // delete the prac
     engine.resetWindows()
   } else {
     toastRef.value?.showAlert(`Failed to delete word: ${currentWord.value?.word}. ${resp.message} (${resp.status})`, 'error')
   }
   closeModal()
-  await booksStore.syncBook()
+  if (await booksStore.syncBook() == 'ok') {
+    booksStore.flushPend(booksStore.activeBookId)
+  }
   engine.doPrac()
 }
 
@@ -340,13 +351,20 @@ watch(isAutoplay, (on) => {
   }
 })
 
-onBeforeRouteLeave(async () => {
+onBeforeRouteLeave(async (to) => {
   if (booksStore.loggingOut) return
   engine.isFlipped = false
-  const success = await booksStore.syncServer()
-  if (!success) {
-    toastRef.value?.showAlert("Failed to sync with server.  Don't leave practice view until network is available.  Don't close the tab or browser.", 'error')
-    return false
+  const rtnSave = await booksStore.saveBook()
+  if (to.path == '/') {
+    const rtnSync = await booksStore.syncBook()
+    if (rtnSync == 'ok') {
+      booksStore.updateSnapshot()
+      booksStore.flushPend(booksStore.activeBookId)
+    }
+    if (!rtnSave && rtnSync == 'stop') {
+      toastRef.value?.showAlert("Failed to write to cache and to sync with server.  Don't navigate to books view until network is available.  Don't close the tab or browser.", 'error')
+      return false
+    }
   }
 })
 
@@ -427,7 +445,8 @@ const { helpOpen, showHelp } = useKeyboardShortcuts(resolveAction, handlers, { i
 handlers.help = () => showHelp()
 
 onMounted(async () => {
-  booksStore.syncPending()
+  await booksStore.syncPending()
+  booksStore.createHasPend()
   engine.resetWindows()
   mq = window.matchMedia('(prefers-reduced-motion: reduce)')
   prefersReducedMotion.value = mq.matches
@@ -436,9 +455,13 @@ onMounted(async () => {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = loadVoices
   }
-  if (await booksStore.syncServer()) {
-    booksStore.updateSnapshot()
-  }
+  // if (await booksStore.syncBook() == 'ok') {
+  //   booksStore.updateSnapshot()
+  // } else {
+  //   booksStore.loadCacheBook()
+  // }
+  booksStore.updateSnapshot()
+  booksStore.updateDueCounters()
   engine.recomputeIntroTracking()
   if (unmounted) return
   engine.doPrac()

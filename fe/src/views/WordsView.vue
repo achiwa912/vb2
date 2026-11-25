@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
+import { previousPath } from '@/router'
 import { SquarePen, SquareArrowRight, SquareArrowLeft, Upload } from '@lucide/vue'
 import { useBooksStore } from '@/stores/books'
 import type { components } from '@/types/api'
@@ -253,11 +254,29 @@ onMounted(async () => {
   if (route.path.startsWith('/demo')) {
     return
   }
-  booksStore.syncPending()
-  // booksStore.words = []
-  // booksStore.pracs = []
-  if (await booksStore.syncBook()) {
-    booksStore.updateSnapshot()
+  await booksStore.syncPending()  // update snapshot with logs
+  booksStore.createHasPend()
+  booksStore.loadCacheBook()  // create pracs from cache (could be dirty)
+  if (previousPath == '/' && await booksStore.syncBook() == 'ok') {
+    await booksStore.saveBook() // pinia to cache
+    booksStore.flushPend(booksStore.activeBookId)
+  }
+  booksStore.updateSnapshot() // pinia to snapshot
+})
+
+onBeforeRouteLeave(async (to) => {
+  if (booksStore.loggingOut) return
+  const rtnSave = await booksStore.saveBook()
+  if (to.path == '/') {
+    const rtnSync = await booksStore.syncBook()
+    if (rtnSync == 'ok') {
+      booksStore.updateSnapshot()
+      booksStore.flushPend(booksStore.activeBookId)
+    }
+    if (!rtnSave && rtnSync == 'stop') {
+      toastRef.value?.showAlert("Failed to write to cache and to sync with server.  Don't navigate to books view until network is available.  Don't close the tab or browser.", 'error')
+      return false
+    }
   }
 })
 

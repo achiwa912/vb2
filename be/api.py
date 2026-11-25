@@ -536,6 +536,8 @@ def sync_book(path: BookPath, body: SyncBookReq) -> tuple[dict[str, str], int]:
     wd_last_practiced = None
     dw_last_practiced = None
     for cp in body.practices:
+        if cp.user_id != user_id:
+            continue
         cp.last_edited = cp.last_edited.astimezone(UTC).replace(tzinfo=None)
         if cp.last_practiced:
             cp.last_practiced = cp.last_practiced.astimezone(UTC).replace(tzinfo=None)
