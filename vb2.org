@@ -1936,6 +1936,14 @@ Do not include a header, numbering, Markdown table, or commentary. Output only t
 - because syncPending updates snapshot for the session (tab close invalidates it)
 - BooksView onMounted calls syncPendAll
   - iterate all snapshot > saveBook
+  - syncBook is deferred until moving to WordsView for the book
+
+*** backlog
+- offline reload
+  - vite-plugin-pwa
+- currently using client timestamp; clients might have drifted time vs server
+  - when sync, client sends its now().  server deals with client-assigned last_edited, etc. add/subtract(?) (server_now() - client_now())
+  - the diff might not be perfect, but within acceptable range even if it takes a few seconds (up to a few min?) to reach the server
 
 
 #+begin_src 

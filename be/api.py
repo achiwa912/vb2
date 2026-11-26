@@ -532,22 +532,28 @@ def sync_book(path: BookPath, body: SyncBookReq) -> tuple[dict[str, str], int]:
     if not book:
         return {"message": "Book not found"}, 404
 
+    sword_ids = set(
+        db.session.execute(select(Word.id).where(Word.book_id == path.id)).scalars()
+    )
+    spracs_dic = {
+        (p.word_id, p.direction): p
+        for p in db.session.execute(
+            select(Practice)
+            .join(Word)
+            .where(Word.book_id == path.id, Practice.user_id == user_id)
+        ).scalars()
+    }
+
     # reconciliation
     wd_last_practiced = None
     dw_last_practiced = None
     for cp in body.practices:
-        if cp.user_id != user_id:
+        if cp.user_id != user_id or cp.word_id not in sword_ids:
             continue
         cp.last_edited = cp.last_edited.astimezone(UTC).replace(tzinfo=None)
         if cp.last_practiced:
             cp.last_practiced = cp.last_practiced.astimezone(UTC).replace(tzinfo=None)
-        sp = db.session.execute(
-            select(Practice).where(
-                Practice.word_id == cp.word_id,
-                Practice.user_id == cp.user_id,
-                Practice.direction == cp.direction,
-            )
-        ).scalar_one_or_none()
+        sp = spracs_dic.get((cp.word_id, cp.direction))
         if not sp:
             sp = Practice(
                 direction=cp.direction,
@@ -560,6 +566,7 @@ def sync_book(path: BookPath, body: SyncBookReq) -> tuple[dict[str, str], int]:
                 due_counter=cp.due_counter,
             )
             db.session.add(sp)
+            spracs_dic[(sp.word_id, sp.direction)] = sp
             if cp.direction == PracDir.WD:
                 if not wd_last_practiced or (
                     cp.last_practiced and (cp.last_practiced > wd_last_practiced)
@@ -571,15 +578,13 @@ def sync_book(path: BookPath, body: SyncBookReq) -> tuple[dict[str, str], int]:
                 ):
                     dw_last_practiced = cp.last_practiced
         else:
-            print(f"+++ {cp.last_edited} vs {sp.last_edited}")
+            # print(f"+++ {cp.last_edited} vs {sp.last_edited}")
             if cp.last_edited > sp.last_edited or (
                 cp.status == "learning" and sp.status == "new"
             ):
                 # sp.direction=cp.direction
                 sp.last_practiced = cp.last_practiced
                 sp.last_edited = cp.last_edited
-                # sp.user_id=cp.user_id
-                # sp.word_id=cp.word_id
                 sp.status = cp.status
                 sp.due_dates = cp.due_dates
                 sp.due_counter = cp.due_counter
@@ -594,15 +599,15 @@ def sync_book(path: BookPath, body: SyncBookReq) -> tuple[dict[str, str], int]:
                         cp.last_practiced and (cp.last_practiced > dw_last_practiced)
                     ):
                         dw_last_practiced = cp.last_practiced
-    b = db.session.execute(select(Book).where(Book.id == path.id)).scalar_one()
+    # b = db.session.execute(select(Book).where(Book.id == path.id)).scalar_one()
     if wd_last_practiced and (
-        not b.wd_last_practiced or wd_last_practiced > b.wd_last_practiced
+        not book.wd_last_practiced or wd_last_practiced > book.wd_last_practiced
     ):
-        b.wd_last_practiced = wd_last_practiced
+        book.wd_last_practiced = wd_last_practiced
     if dw_last_practiced and (
-        not b.dw_last_practiced or dw_last_practiced > b.dw_last_practiced
+        not book.dw_last_practiced or dw_last_practiced > book.dw_last_practiced
     ):
-        b.dw_last_practiced = dw_last_practiced
+        book.dw_last_practiced = dw_last_practiced
     # no need to update b.last_updated
     db.session.commit()
 
@@ -610,12 +615,17 @@ def sync_book(path: BookPath, body: SyncBookReq) -> tuple[dict[str, str], int]:
         db.session.execute(select(Word).where(Word.book_id == path.id)).scalars().all()
     )
     practices = (
-        db.session.execute(select(Practice).join(Word).where(Word.book_id == path.id))
+        db.session.execute(
+            select(Practice)
+            .join(Word)
+            .where(Word.book_id == path.id, Practice.user_id == user_id)
+        )
         .scalars()
         .all()
     )
-    b = BookSchema.model_validate(b)
+    b = BookSchema.model_validate(book)
     words = [WordSchema.model_validate(w) for w in words]
+    # word_ids = {w.id for w in words}
     practices = [PracticeSchema.model_validate(p) for p in practices]
 
     return (
