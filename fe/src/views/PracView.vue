@@ -110,17 +110,20 @@ const deleteWord = async () => {
     engine.doPrac()
     return
   }
+  const w = {...currentWord.value}
   const resp = await booksStore.deleteWord(currentWord.value)
   if (resp.status == 200) {
-    toastRef.value?.showAlert(`Deleted word: ${currentWord.value?.word} (id: ${currentWord.value?.id})`, 'success')
-    engine.resetWindows()
+    toastRef.value?.showAlert(`Deleted word: ${w?.word} (id: ${w?.id})`, 'success')
   } else {
-    toastRef.value?.showAlert(`Failed to delete word: ${currentWord.value?.word}. ${resp.message} (${resp.status})`, 'error')
+    toastRef.value?.showAlert(`Failed to delete word: ${w?.word}. ${resp.message} (${resp.status})`, 'error')
   }
+  engine.resetWindows()  // need this here, too
+  engine.doPrac()
   closeModal()
   if (await booksStore.syncBook() == 'ok') {
     booksStore.flushPend(booksStore.activeBookId)
   }
+  engine.resetWindows()  // syncBook refreshed pracs, affecting lw/ww
   engine.doPrac()
 }
 

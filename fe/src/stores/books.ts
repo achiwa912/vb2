@@ -342,14 +342,18 @@ export const useBooksStore = defineStore('books', () => {
       } catch (err) {
 	console.log('syncBook - cache re-read error', err)
       }
-      const isActive = targetId == activeBookId.value
-      const local = reconPracs(isActive ? pracs.value : [], stored?.pracs ?? [])
-      const dirty = hasNewWork(pushed, local)
-      const merged = reconPracs(local, data.practices)
 
+      const word_ids = new Set(data.words.map(word => word.id))
+      const isActive = targetId == activeBookId.value
+      let local = reconPracs(isActive ? pracs.value : [], stored?.pracs ?? [])
+      local = local.filter(p => word_ids.has(p.word_id))
+      let merged = reconPracs(local, data.practices)
+      merged = merged.filter(p => word_ids.has(p.word_id))
+      const dirty = hasNewWork(pushed.filter(p => word_ids.has(p.word_id)), local)
+      
       if (isActive) { // this function doesn't contaminate pinia words and pracs if it's not activeBookId!
 	words.value = data.words  // from server
-	pracs.value = merged  // reconciled between local and from server
+	pracs.value = merged
       }
       try {
 	const cr: CacheRecord = {
