@@ -40,6 +40,7 @@ export const useBooksStore = defineStore('books', () => {
   const newWordsCap = ref<number>(20)
   const loggingOut = ref<boolean>(false)
   const isLoading = ref<number>(0)  // this is counter now! (was boolean)
+  const isOffline = ref<boolean>(false)
   const hasPend = ref<Set<number>>(new Set())  // books with dirty cache
   
   const route = useRoute()
@@ -62,6 +63,7 @@ export const useBooksStore = defineStore('books', () => {
     newWordsCap.value = 20
     loggingOut.value = false
     isLoading.value = 0
+    isOffline.value = false
     hasPend.value = new Set()
   }
 
@@ -98,8 +100,10 @@ export const useBooksStore = defineStore('books', () => {
       } catch (err) {
 	console.log('fetchBooks - loading from cache failed.', err)
       }
+      isOffline.value = true
       return
     }
+    isOffline.value = false
     books.value = data!.books
     localStorage.setItem(cKey, JSON.stringify(books.value))
   }
@@ -129,9 +133,11 @@ export const useBooksStore = defineStore('books', () => {
       } catch {
 	console.log('fetchWords - loading from cache failed.')
       }
+      isOffline.value = true
       return
     }
     words.value = data!.words
+    isOffline.value = false
     return
   }
 
@@ -202,24 +208,6 @@ export const useBooksStore = defineStore('books', () => {
 	  console.log(`saveBook - JSON parse error`, err)
 	}
       }
-      // if (raw) {
-      // 	try {
-      // 	  const cr: CacheRecord = JSON.parse(raw)
-      // 	  // reconcile with last_edited
-      // 	  const toAdd = []
-      // 	  for (let i=0; i<cr.pracs.length; i++) {
-      // 	    const mix = pracs.value.findIndex(p => (p.word_id == cr.pracs[i]!.word_id) && (p.direction == cr.pracs[i]!.direction))
-      // 	    if (mix === -1 && words.value.some(w => w.id == cr.pracs[i]!.word_id)) {
-      // 	      toAdd.push({...cr.pracs[i]!})
-      // 	    } else if (ts(cr.pracs[i]!.last_edited) > ts(pracs.value[mix]!.last_edited)) {
-      // 	      pracs.value[mix] = { ...cr.pracs[i]! }
-      // 	    }
-      // 	  }
-      // 	  pracs.value.push(...toAdd)
-      // 	} catch (err) {
-      // 	  console.log(`saveBook - JSON parse error`, err)
-      // 	}
-      // }
       const crec: CacheRecord = {
 	bookId: activeBookId.value!,
 	hasPend: hasPend.value.has(activeBookId.value!),
@@ -319,18 +307,21 @@ export const useBooksStore = defineStore('books', () => {
 	  } else if (res.response.status == 400) { // client bug?
 	    return 'continue'
 	  }
+	  isOffline.value = true
 	  return 'stop'
 	}
 	data = res.data
       } catch (err) {
 	// network error comes here?
 	console.log('syncBook - exception while syncing with server', err)
+	isOffline.value = true
 	return 'stop'
       } finally {
 	isLoading.value--
       }
       if (!data) {
 	console.log('syncBook - no data in response from server')
+	isOffline.value = true
 	return 'stop'
       }
 
@@ -374,6 +365,7 @@ export const useBooksStore = defineStore('books', () => {
       } else {
 	hasPend.value.delete(targetId)  // remove from dirty set
       }
+      isOffline.value = false
       return 'ok'
     })
   }
@@ -919,5 +911,5 @@ export const useBooksStore = defineStore('books', () => {
     return { ss, logList, isDirty }
   }
   
-  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, loadCacheBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, updateDueCounters, userId, reset, prepDemo, updateSnapshot, syncPendAll, syncPending, pracCounter, infoMem, infoTried, newWordsCap, loggingOut, isLoading, createHasPend, hasPend, flushPend, saveBook }
+  return { books, words, pracs, activeBookId, pracDir, fetchBooks, fetchWords, syncBook, loadCacheBook, addBook, editBook, deleteBook, addWord, editWord, deleteWord, id2ixWord, id2ixBook, wordsNoPrac, lastSyncTime, isNextDayOrLater, createWordsNoPrac, updateDueCounters, userId, reset, prepDemo, updateSnapshot, syncPendAll, syncPending, pracCounter, infoMem, infoTried, newWordsCap, loggingOut, isLoading, isOffline, createHasPend, hasPend, flushPend, saveBook }
 })
