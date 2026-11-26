@@ -81,15 +81,15 @@ function goWords() {
             <span v-if="route.path.startsWith('/demo')" class="absolute -top-3 -right-14 text-[18px] font-bold text-error bg-error/5 border border-error/60 px-1.5 py-0.5 rounded-full whitespace-nowrap italic">
               Demo mode
             </span>
-            <span v-if="booksStore.isOffline" class="absolute -top-3 -right-14 text-[18px] font-bold text-error bg-accent/5 border border-accent/60 px-1.5 py-0.5 rounded-full whitespace-nowrap italic">
-              offline
-            </span>
           </div>
 
           <span @click="goHome" class="text-2xl font-semibold tracking-tight cursor-pointer">vocaBull</span>
           
           <span v-if="route.path.startsWith('/demo')" class="sm:hidden text-[12px] font-bold text-error bg-error/5 border border-error/60 px-1.5 py-0.5 rounded-full italic ml-2">
             Demo
+          </span>
+          <span v-if="booksStore.isOffline" class="text-[12px] font-bold text-accent bg-accent/5 border border-accent/60 px-1.5 py-0.5 rounded-full italic ml-2">
+            offline
           </span>
       
           <!-- Breadcrumbs -->
