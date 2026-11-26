@@ -324,7 +324,7 @@ export const useBooksStore = defineStore('books', () => {
 	data = res.data
       } catch (err) {
 	// network error comes here?
-	console.log('syncBook - exception while sync with server', err)
+	console.log('syncBook - exception while syncing with server', err)
 	return 'stop'
       } finally {
 	isLoading.value--
