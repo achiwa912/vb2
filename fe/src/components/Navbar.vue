@@ -88,7 +88,7 @@ function goWords() {
           <span v-if="route.path.startsWith('/demo')" class="sm:hidden text-[12px] font-bold text-error bg-error/5 border border-error/60 px-1.5 py-0.5 rounded-full italic ml-2">
             Demo
           </span>
-          <span v-if="booksStore.isOffline" class="text-[12px] font-bold text-accent bg-accent/5 border border-accent/60 px-1.5 py-0.5 rounded-full italic ml-2">
+          <span v-if="booksStore.isOffline" class="text-[12px] text-info bg-info/5 border border-info/60 px-1.5 py-0.5 rounded-full italic">
             offline
           </span>
       
