@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { previousPath } from '@/router'
 import { useBooksStore } from '@/stores/books'
 import type { components } from '@/types/api'
 import { SquarePen, Download, Upload, Search, Plus } from '@lucide/vue'
@@ -243,11 +244,13 @@ const isEmpty = computed(() => booksStore.books.length === 0)
 onMounted(async () => {
   await booksStore.syncPendAll()  // Cleanup snapshot logs and update cache
   booksStore.createHasPend()
-  booksStore.books = []
   booksStore.words = []
   booksStore.pracs = []
   booksStore.activeBookId = null
-  await booksStore.fetchBooks()
+  if (!['/words', '/prac'].includes(previousPath)) {
+    booksStore.books = []
+    await booksStore.fetchBooks()
+  }
 })
 
 
